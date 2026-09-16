@@ -1,0 +1,1 @@
+{"author":"livevnx8","description":"Frontend for the provenance-swarm template: submit claims, watch verification run, inspect on-chain receipts.","license":"MIT","name":"@provenance-swarm/nextjs","private":true,"scripts":{"build":"next build","dev":"next dev","start":"next start"},"version":"0.1.0"}
