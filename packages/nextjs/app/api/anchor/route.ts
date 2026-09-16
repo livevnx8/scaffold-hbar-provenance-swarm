@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ethers } from 'ethers';
-import { HederaAnchor } from '@provenance-swarm/swarm';
-import type { ProvenanceReceipt } from '@provenance-swarm/swarm';
+import { HederaAnchor, mirrorMessageUrl } from '@provenance-swarm/swarm';
+import type { ProvenanceReceipt, HederaNetworkName } from '@provenance-swarm/swarm';
 
 const REGISTRY_ABI = [
   'function anchorReceipt(string calldata claimId, bytes32 decisionHash) external',
@@ -38,10 +38,18 @@ export async function POST(req: Request) {
   }
 
   const out: Record<string, unknown> = {};
+  const network: HederaNetworkName =
+    process.env.HEDERA_NETWORK === 'mainnet' ? 'mainnet' : 'testnet';
 
   // 1 — HCS anchor
   try {
-    out.hcs = { ok: true, ...(await anchor.anchorReceipt(receipt)) };
+    const anchored = await anchor.anchorReceipt(receipt);
+    out.hcs = {
+      ok: true,
+      ...anchored,
+      mirrorUrl: mirrorMessageUrl(network, anchored.topicId, anchored.sequenceNumber),
+      network,
+    };
   } catch (err) {
     out.hcs = { ok: false, error: err instanceof Error ? err.message : 'HCS anchor failed' };
   }

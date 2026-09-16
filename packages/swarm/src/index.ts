@@ -34,3 +34,5 @@ export type {
   AnchorRecord,
   MintRecord,
 } from './hedera.js';
+export { verifyHcsAnchorOnMirror, mirrorMessageUrl } from './mirror.js';
+export type { HcsAnchorLookup, MirrorVerification, HederaNetworkName } from './mirror.js';

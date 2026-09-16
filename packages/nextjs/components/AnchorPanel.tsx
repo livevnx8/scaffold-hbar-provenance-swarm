@@ -9,6 +9,12 @@ export default function AnchorPanel({ receipt }: { receipt: ProvenanceReceipt })
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<AnchorResults | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mirrorBusy, setMirrorBusy] = useState(false);
+  const [mirrorResult, setMirrorResult] = useState<{
+    found: boolean;
+    match: boolean;
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
     fetch('/api/config')
@@ -41,6 +47,29 @@ export default function AnchorPanel({ receipt }: { receipt: ProvenanceReceipt })
   }
 
   const network = config?.network ?? 'testnet';
+
+  async function verifyOnMirror() {
+    if (!results?.hcs.ok || !results.hcs.topicId || !results.hcs.sequenceNumber) return;
+    setMirrorBusy(true);
+    setMirrorResult(null);
+    try {
+      const res = await fetch('/api/mirror-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          network: results.hcs.network ?? network,
+          topicId: results.hcs.topicId,
+          sequenceNumber: results.hcs.sequenceNumber,
+          expectedDecisionHash: receipt.decisionHash,
+        }),
+      });
+      setMirrorResult(await res.json());
+    } catch {
+      setMirrorResult({ found: false, match: false, error: 'Network error' });
+    } finally {
+      setMirrorBusy(false);
+    }
+  }
 
   return (
     <div className="card">
@@ -86,7 +115,42 @@ export default function AnchorPanel({ receipt }: { receipt: ProvenanceReceipt })
               ·{' '}
               <a href={hashscanTopic(network, results.hcs.topicId!)} target="_blank" rel="noreferrer">
                 view topic ↗
+              </a>{' '}
+              ·{' '}
+              <a href={results.hcs.mirrorUrl} target="_blank" rel="noreferrer">
+                mirror node ↗
               </a>
+              <div style={{ marginTop: '0.6rem' }}>
+                <button
+                  className="btn ghost"
+                  style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem' }}
+                  onClick={verifyOnMirror}
+                  disabled={mirrorBusy}
+                >
+                  {mirrorBusy ? (
+                    <>
+                      <span className="spin" /> Checking mirror…
+                    </>
+                  ) : (
+                    'Verify on mirror node'
+                  )}
+                </button>
+                {mirrorResult && (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    {mirrorResult.error ? (
+                      <span className="badge warn">{mirrorResult.error}</span>
+                    ) : !mirrorResult.found ? (
+                      <span className="badge warn">
+                        not visible yet — mirror nodes lag consensus by a few seconds, retry shortly
+                      </span>
+                    ) : mirrorResult.match ? (
+                      <span className="badge pass">mirror confirms the anchored decision hash</span>
+                    ) : (
+                      <span className="badge fail">mirror payload does not match this receipt</span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
           {results && !results.hcs.ok && <div className="aresult" style={{ color: 'var(--red)' }}>{results.hcs.error}</div>}

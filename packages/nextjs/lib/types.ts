@@ -17,7 +17,15 @@ export interface ChainConfig {
 }
 
 export interface AnchorResults {
-  hcs: { ok: boolean; topicId?: string; sequenceNumber?: string; transactionId?: string; error?: string };
+  hcs: {
+    ok: boolean;
+    topicId?: string;
+    sequenceNumber?: string;
+    transactionId?: string;
+    mirrorUrl?: string;
+    network?: string;
+    error?: string;
+  };
   contract: { ok: boolean; address?: string; transactionId?: string; skipped?: string; error?: string };
   nft: { ok: boolean; tokenId?: string; serial?: string; transactionId?: string; skipped?: string; error?: string };
 }
