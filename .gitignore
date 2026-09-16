@@ -9,6 +9,7 @@ coverage/
 .env.local
 artifacts/
 cache/
+typechain-types/
 
 # Next.js generated
 packages/nextjs/next-env.d.ts
