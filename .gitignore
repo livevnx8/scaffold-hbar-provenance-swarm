@@ -9,3 +9,6 @@ coverage/
 .env.local
 artifacts/
 cache/
+
+# Next.js generated
+packages/nextjs/next-env.d.ts
