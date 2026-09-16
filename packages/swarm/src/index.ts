@@ -29,6 +29,7 @@ export { VnxProvenanceClient } from './sdk.js';
 export type { ProvenanceVerification } from './sdk.js';
 export { fixtureClaim } from './fixture.js';
 export { HederaAnchor, configFromEnv } from './hedera.js';
+export { veraGenesisClaim } from './vera-genesis.js';
 export type {
   HederaAnchorConfig,
   AnchorRecord,

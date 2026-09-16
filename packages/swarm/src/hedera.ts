@@ -111,10 +111,13 @@ export class HederaAnchor {
   }
 
   /** Create the certificate NFT collection (one-time setup per network). */
-  async createCertificateToken(): Promise<string> {
+  async createCertificateToken(
+    name = 'Provenance Certificate',
+    symbol = 'PROVC',
+  ): Promise<string> {
     const tx = await new TokenCreateTransaction()
-      .setTokenName('Provenance Certificate')
-      .setTokenSymbol('PROVC')
+      .setTokenName(name)
+      .setTokenSymbol(symbol)
       .setTokenType(TokenType.NonFungibleUnique)
       .setDecimals(0)
       .setInitialSupply(0)
@@ -132,22 +135,31 @@ export class HederaAnchor {
     return tokenId;
   }
 
-  /** Mint a provenance-certificate NFT carrying the receipt's decision hash. */
-  async mintCertificate(receipt: ProvenanceReceipt): Promise<MintRecord> {
+  /**
+   * Mint a provenance-certificate NFT carrying the receipt's decision hash.
+   * Pass custom `metadata` bytes (e.g. a HIP-412 JSON document) for art NFTs;
+   * defaults to the compact claim/decision/verdict JSON.
+   */
+  async mintCertificate(
+    receipt: ProvenanceReceipt,
+    opts?: { metadata?: Buffer },
+  ): Promise<MintRecord> {
     const tokenId = this.config.certificateTokenId;
     if (!tokenId) {
       throw new Error(
         'No certificate token configured — run createCertificateToken() once, then set HEDERA_CERTIFICATE_TOKEN_ID',
       );
     }
-    const metadata = Buffer.from(
-      JSON.stringify({
-        claimId: receipt.claimId,
-        decisionHash: receipt.decisionHash,
-        verdict: receipt.verdict,
-      }),
-      'utf8',
-    );
+    const metadata =
+      opts?.metadata ??
+      Buffer.from(
+        JSON.stringify({
+          claimId: receipt.claimId,
+          decisionHash: receipt.decisionHash,
+          verdict: receipt.verdict,
+        }),
+        'utf8',
+      );
     const tx = await new TokenMintTransaction()
       .setTokenId(tokenId)
       .setMetadata([metadata])
