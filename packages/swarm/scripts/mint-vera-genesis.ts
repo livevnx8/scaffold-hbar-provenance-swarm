@@ -10,16 +10,11 @@
  * receipt on HCS → create the "Vera Genesis Receipt" (VGEN) collection →
  * mint serial #1 with the HIP-412 metadata JSON as its on-chain metadata.
  */
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 import {
   VnxProvenanceClient,
   veraGenesisClaim,
   HederaAnchor,
 } from '../src/index.js';
-
-const here = dirname(fileURLToPath(import.meta.url));
 
 function hashscanTx(network: string, txId: string): string {
   const net = network === 'mainnet' ? 'mainnet' : 'testnet';
@@ -56,14 +51,30 @@ async function main(): Promise<void> {
   console.log(`HCS anchored: topic ${hcs.topicId} seq ${hcs.sequenceNumber}`);
   console.log(`  ${hashscanTx(network, hcs.transactionId)}`);
 
-  // 4 — create the collection
-  const tokenId = await anchor.createCertificateToken('Vera Genesis Receipt', 'VGEN');
-  console.log(`collection created: ${tokenId}`);
+  // 4 — create the collection (reuse HEDERA_CERTIFICATE_TOKEN_ID when set)
+  const tokenId =
+    process.env.HEDERA_CERTIFICATE_TOKEN_ID ||
+    (await anchor.createCertificateToken('Vera Genesis Receipt', 'VGEN'));
+  if (process.env.HEDERA_CERTIFICATE_TOKEN_ID) {
+    console.log(`reusing collection: ${tokenId}`);
+  } else {
+    console.log(`collection created: ${tokenId}`);
+  }
   console.log(`  ${hashscanToken(network, tokenId)}`);
 
-  // 5 — mint with HIP-412 metadata
-  const metadata = readFileSync(join(here, '..', '..', '..', 'vera-nft', 'metadata.json'));
-  const mint = await anchor.mintCertificate(receipt, { metadata });
+  // 5 — mint. HTS caps NFT metadata at 100 bytes, so the full HIP-412 JSON
+  // (vera-nft/metadata.json, kept in the repo for IPFS pinning) cannot go
+  // on-chain directly. The token carries a compact, self-verifying pointer:
+  //   <claimId>/<decisionHash>
+  // Anyone can take the decision hash to the HCS topic and replay the receipt.
+  const compact = `${receipt.claimId}/${receipt.decisionHash}`;
+  if (Buffer.byteLength(compact, 'utf8') > 100) {
+    throw new Error('Compact receipt pointer exceeds the 100-byte HTS metadata limit');
+  }
+  console.log(`compact on-chain metadata (${compact.length} bytes): ${compact}`);
+  const mint = await anchor.mintCertificate(receipt, {
+    metadata: Buffer.from(compact, 'utf8'),
+  });
   console.log(`minted serial #${mint.serial} on ${mint.tokenId}`);
   console.log(`  ${hashscanTx(network, mint.transactionId)}`);
 

@@ -1,1 +1,46 @@
-{"_note":"Artwork (vera-genesis-receipt.png) ships with the repo; image URL to be set when pinned to IPFS. All receipt data below is on-chain and verifiable as-is.","attributes":[{"trait_type":"claim","value":"vera-genesis-001"},{"trait_type":"verdict","value":"verified"},{"trait_type":"double-verifier","value":"accepted"},{"trait_type":"workers_passed","value":"3/3"},{"trait_type":"network","value":"Hedera testnet"},{"trait_type":"collection","value":"Vera Genesis Receipt"}],"creator":"Vera","description":"Genesis receipt of the scaffold-hbar-provenance-swarm template: the template verifying its first claim — itself. Three deterministic verifier workers (origin attestation, custody chain, document hashes) passed; the Hiero double-verifier accepted the receipt. The decision hash is anchored on Hedera.","image":"","name":"Vera Genesis Receipt #001","properties":{"claimId":"vera-genesis-001","custody":"Vera → Stanley · livevnx8","decisionHash":"eb3d574fe1de2628f0a5b89c40cd7434754ef2db05373aa69751ac9ae87e071d","product":"Vera Genesis Receipt","taskHash":"3b01e87e9dfb96b93cc00391e899e6ec41cc105deb31e4553e48a555b87bfc19","template":"scaffold-hbar-provenance-swarm"},"type":"image/png"}
+{
+  "_note": "Minted live on Hedera testnet 2026-09-16: collection 0.0.10569997 (VGEN), serial #1. HTS caps NFT metadata at 100 bytes, so the token carries the compact pointer 'vera-genesis-001/<decisionHash>'; this full HIP-412 JSON is kept in-repo for IPFS pinning. HCS anchor: topic 0.0.10569989 seq 2. See LIVE_RUN.md for HashScan links.",
+  "attributes": [
+    {
+      "trait_type": "claim",
+      "value": "vera-genesis-001"
+    },
+    {
+      "trait_type": "verdict",
+      "value": "verified"
+    },
+    {
+      "trait_type": "double-verifier",
+      "value": "accepted"
+    },
+    {
+      "trait_type": "workers_passed",
+      "value": "3/3"
+    },
+    {
+      "trait_type": "network",
+      "value": "Hedera testnet"
+    },
+    {
+      "trait_type": "collection",
+      "value": "Vera Genesis Receipt"
+    }
+  ],
+  "creator": "Vera",
+  "description": "Genesis receipt of the scaffold-hbar-provenance-swarm template: the template verifying its first claim \u2014 itself. Three deterministic verifier workers (origin attestation, custody chain, document hashes) passed; the Hiero double-verifier accepted the receipt. The decision hash is anchored on Hedera.",
+  "image": "",
+  "name": "Vera Genesis Receipt #001",
+  "properties": {
+    "claimId": "vera-genesis-001",
+    "custody": "Vera \u2192 Stanley \u00b7 livevnx8",
+    "decisionHash": "eb3d574fe1de2628f0a5b89c40cd7434754ef2db05373aa69751ac9ae87e071d",
+    "product": "Vera Genesis Receipt",
+    "taskHash": "3b01e87e9dfb96b93cc00391e899e6ec41cc105deb31e4553e48a555b87bfc19",
+    "template": "scaffold-hbar-provenance-swarm",
+    "hcsTopicId": "0.0.10569989",
+    "hcsSequenceNumber": "2",
+    "collectionTokenId": "0.0.10569997",
+    "serialNumber": "1"
+  },
+  "type": "image/png"
+}

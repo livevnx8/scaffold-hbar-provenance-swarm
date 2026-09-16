@@ -28,6 +28,19 @@ export interface HederaAnchorConfig {
   network: 'testnet' | 'mainnet';
   topicId?: string;
   certificateTokenId?: string;
+  /**
+   * Curve of the operator key. Raw 32-byte keys cannot be distinguished by
+   * inspection, and the SDK defaults to ED25519 — set 'ecdsa' for
+   * ECDSA/secp256k1 operator keys (e.g. HashPack-style accounts).
+   */
+  keyType?: 'ed25519' | 'ecdsa';
+}
+
+/** Parse the operator key honoring the configured curve. */
+export function parseOperatorKey(key: string, keyType?: 'ed25519' | 'ecdsa'): PrivateKey {
+  if (keyType === 'ecdsa') return PrivateKey.fromStringECDSA(key.replace(/^0x/, ''));
+  if (keyType === 'ed25519') return PrivateKey.fromStringED25519(key.replace(/^0x/, ''));
+  return PrivateKey.fromString(key);
 }
 
 /** Read config from the environment; returns null when no operator is set. */
@@ -35,12 +48,15 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): HederaAncho
   const operatorId = env.HEDERA_OPERATOR_ID;
   const operatorKey = env.HEDERA_OPERATOR_KEY;
   if (!operatorId || !operatorKey) return null;
+  const keyType = env.HEDERA_KEY_TYPE === 'ecdsa' ? 'ecdsa'
+    : env.HEDERA_KEY_TYPE === 'ed25519' ? 'ed25519' : undefined;
   return {
     operatorId,
     operatorKey,
     network: env.HEDERA_NETWORK === 'mainnet' ? 'mainnet' : 'testnet',
     topicId: env.HEDERA_PROVENANCE_TOPIC_ID,
     certificateTokenId: env.HEDERA_CERTIFICATE_TOKEN_ID,
+    keyType,
   };
 }
 
@@ -62,7 +78,7 @@ export class HederaAnchor {
   constructor(private config: HederaAnchorConfig) {
     this.client =
       config.network === 'mainnet' ? Client.forMainnet() : Client.forTestnet();
-    this.client.setOperator(config.operatorId, PrivateKey.fromString(config.operatorKey));
+    this.client.setOperator(config.operatorId, parseOperatorKey(config.operatorKey, config.keyType));
   }
 
   /** Build from env; returns null when no operator credentials are configured. */
@@ -115,6 +131,7 @@ export class HederaAnchor {
     name = 'Provenance Certificate',
     symbol = 'PROVC',
   ): Promise<string> {
+    const operatorKey = parseOperatorKey(this.config.operatorKey, this.config.keyType);
     const tx = await new TokenCreateTransaction()
       .setTokenName(name)
       .setTokenSymbol(symbol)
@@ -124,9 +141,9 @@ export class HederaAnchor {
       .setTreasuryAccountId(this.config.operatorId)
       .setSupplyType(TokenSupplyType.Finite)
       .setMaxSupply(100000)
-      .setSupplyKey(PrivateKey.fromString(this.config.operatorKey).publicKey)
+      .setSupplyKey(operatorKey.publicKey)
       .freezeWith(this.client);
-    const signed = await tx.sign(PrivateKey.fromString(this.config.operatorKey));
+    const signed = await tx.sign(operatorKey);
     const submitted = await signed.execute(this.client);
     const receipt = await submitted.getReceipt(this.client);
     const tokenId = receipt.tokenId?.toString();
