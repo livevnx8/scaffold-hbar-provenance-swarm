@@ -123,13 +123,17 @@ Copy `packages/nextjs/.env.example` to `packages/nextjs/.env`:
 4. Run the full claim flow in the frontend: verify → anchor → verify on mirror node.
 5. Record the transaction hashes below.
 
-**Verified testnet transactions** (to be recorded during the build window):
+**Verified testnet transactions** — the template's HCS + HTS adapters have already run live
+on testnet (full notes: [`vera-nft/LIVE_RUN.md`](./vera-nft/LIVE_RUN.md)):
 
 | Step | Transaction | HashScan link |
 |---|---|---|
-| Registry deployment | _pending_ | _pending_ |
-| Receipt anchor (HCS) | _pending_ | _pending_ |
-| Certificate NFT mint (HTS) | _pending_ | _pending_ |
+| Receipt anchor (HCS) | `0.0.9032608@1789565505.352869642` (topic `0.0.10569989`, seq 2) | [transaction](https://hashscan.io/testnet/transaction/0.0.9032608@1789565505.352869642) · [topic](https://hashscan.io/testnet/topic/0.0.10569989) |
+| Certificate NFT mint (HTS) | `0.0.9032608@1789565511.702573940` (token `0.0.10569997`, serial #1) | [transaction](https://hashscan.io/testnet/transaction/0.0.9032608@1789565511.702573940) · [token](https://hashscan.io/testnet/token/0.0.10569997) |
+| Registry deployment | _pending — runs in the build window_ | _pending_ |
+
+A fresh end-to-end run from the published template (verify → anchor → mirror re-verify,
+including the registry deployment) will be recorded here during the build window.
 
 ## API routes (frontend backend)
 
@@ -155,8 +159,9 @@ npm run build --workspace @provenance-swarm/nextjs  # production build must comp
 
 - The verifier workers are **deterministic scoring logic**, not AI models. The "agent swarm" framing
   refers to the worker/coordinator/registry architecture with verifiable receipts.
-- Live Hedera behavior is demo-grade until the testnet run above is recorded with real transaction
-  hashes. Everything else in this repo is verified in CI without credentials.
+- Live Hedera behavior is demo-grade until the registry deployment and the fresh published-template
+  run above are recorded with real transaction hashes. Everything else in this repo is verified by the
+  offline test suites, which need no credentials.
 - The double-verifier is two independent verification *passes* over the same receipt, not two
   independent external systems.
 - Hash-chained receipts and mirror re-verification are solid engineering, not novel cryptography.

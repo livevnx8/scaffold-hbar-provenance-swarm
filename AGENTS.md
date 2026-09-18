@@ -16,12 +16,13 @@ anchored on Hedera. Forkable via `npm create scaffold-hbar@latest -- --template 
 ## Commands
 
 ```bash
-yarn install
-yarn demo                        # offline swarm demo (no credentials)
-yarn test                        # every workspace suite
-yarn workspace @provenance-swarm/swarm test
-yarn workspace @provenance-swarm/contracts test
-yarn workspace @provenance-swarm/contracts deploy:testnet
+npm install
+npm run demo                       # offline swarm demo (no credentials)
+npm test                           # every workspace suite
+npm test --workspace @provenance-swarm/swarm
+npm test --workspace @provenance-swarm/contracts
+npm run deploy:testnet --workspace @provenance-swarm/contracts
+npm run lint                       # eslint across all workspaces
 ```
 
 ## Conventions

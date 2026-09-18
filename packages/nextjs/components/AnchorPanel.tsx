@@ -174,7 +174,7 @@ export default function AnchorPanel({ receipt }: { receipt: ProvenanceReceipt })
           </p>
           {!config?.registry && (
             <div className="aresult" style={{ color: 'var(--muted)' }}>
-              No registry deployed — run <code style={{ fontFamily: 'var(--mono)' }}>yarn workspace @provenance-swarm/contracts deploy:testnet</code> first.
+              No registry deployed — run <code style={{ fontFamily: 'var(--mono)' }}>npm run deploy:testnet --workspace=@provenance-swarm/contracts</code> first.
             </div>
           )}
           {results?.contract.ok && (

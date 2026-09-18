@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          'No registry contract configured. Deploy one with: yarn workspace @provenance-swarm/contracts deploy:testnet',
+          'No registry contract configured. Deploy one with: npm run deploy:testnet --workspace=@provenance-swarm/contracts',
       },
       { status: 400 },
     );

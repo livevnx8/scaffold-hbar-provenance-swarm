@@ -1,1 +1,28 @@
-{"author":"livevnx8","dependencies":{"@provenance-swarm/swarm":"0.1.0","ethers":"^6.13.0","next":"^15.1.0","react":"^19.0.0","react-dom":"^19.0.0"},"description":"Frontend for the provenance-swarm template: submit claims, watch verification run, inspect on-chain receipts.","devDependencies":{"@types/node":"^22.0.0","@types/react":"^19.0.0","@types/react-dom":"^19.0.0","typescript":"^5.8.2"},"license":"MIT","name":"@provenance-swarm/nextjs","private":true,"scripts":{"build":"next build","dev":"next dev","start":"next start","typecheck":"tsc --noEmit"},"version":"0.1.0"}
+{
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint app components lib"
+  },
+  "author": "livevnx8",
+  "dependencies": {
+    "@provenance-swarm/swarm": "0.1.0",
+    "ethers": "^6.13.0",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "description": "Frontend for the provenance-swarm template: submit claims, watch verification run, inspect on-chain receipts.",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.8.2"
+  },
+  "license": "MIT",
+  "name": "@provenance-swarm/nextjs",
+  "private": true,
+  "version": "0.1.0"
+}

@@ -1,1 +1,59 @@
-{"create-scaffold-hbar":{"capabilities":{"frontend":["nextjs-app"],"packageManager":["yarn","npm"],"solidityFramework":["hardhat"]},"defaults":{"frontend":"nextjs-app","packageManager":"yarn","solidityFramework":"hardhat"},"outro":{"sections":[{"steps":[{"text":"This template verifies provenance claims off-chain with a deterministic agent swarm, then anchors receipts on Hedera. No Hedera account is needed for the offline demo."}]},{"steps":[{"command":"yarn demo","label":"Run the offline demo"},{"label":"Copy the env file","text":"packages/nextjs/.env.example → packages/nextjs/.env, then add your Hedera testnet account"},{"command":"yarn workspace @provenance-swarm/contracts deploy:testnet","label":"Deploy the registry contract"},{"command":"yarn workspace @provenance-swarm/nextjs dev","label":"Start the frontend"},{"label":"Verify a claim end-to-end","text":"Submit the fixture coffee shipment in the UI and inspect the receipt, the HCS anchor, and the certificate NFT on HashScan."}],"title":"Suggested steps"}]}},"description":"Verifiable supply-chain provenance: a deterministic agent swarm checks a product's origin attestation, custody chain, and document hashes, then anchors the tamper-evident receipt on Hedera (smart-contract registry + HCS) and mints a provenance-certificate NFT.","name":"provenance-swarm"}
+{
+  "create-scaffold-hbar": {
+    "capabilities": {
+      "frontend": [
+        "nextjs-app"
+      ],
+      "packageManager": [
+        "npm",
+        "yarn"
+      ],
+      "solidityFramework": [
+        "hardhat"
+      ]
+    },
+    "defaults": {
+      "frontend": "nextjs-app",
+      "packageManager": "npm",
+      "solidityFramework": "hardhat"
+    },
+    "outro": {
+      "sections": [
+        {
+          "steps": [
+            {
+              "text": "This template verifies provenance claims off-chain with a deterministic agent swarm, then anchors receipts on Hedera. No Hedera account is needed for the offline demo."
+            }
+          ]
+        },
+        {
+          "steps": [
+            {
+              "command": "npm run demo",
+              "label": "Run the offline demo"
+            },
+            {
+              "label": "Copy the env file",
+              "text": "packages/nextjs/.env.example \u2192 packages/nextjs/.env, then add your Hedera testnet account"
+            },
+            {
+              "command": "npm run deploy:testnet --workspace=@provenance-swarm/contracts",
+              "label": "Deploy the registry contract"
+            },
+            {
+              "command": "npm run dev --workspace=@provenance-swarm/nextjs",
+              "label": "Start the frontend"
+            },
+            {
+              "label": "Verify a claim end-to-end",
+              "text": "Submit the fixture coffee shipment in the UI and inspect the receipt, the HCS anchor, and the certificate NFT on HashScan."
+            }
+          ],
+          "title": "Suggested steps"
+        }
+      ]
+    }
+  },
+  "description": "Verifiable supply-chain provenance: a deterministic agent swarm checks a product's origin attestation, custody chain, and document hashes, then anchors the tamper-evident receipt on Hedera (smart-contract registry + HCS) and mints a provenance-certificate NFT.",
+  "name": "provenance-swarm"
+}

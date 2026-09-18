@@ -52,7 +52,7 @@ export default function Home() {
     }
   }
 
-  const stage = !receipt ? 0 : 3;
+  const stage = busy ? 1 : !receipt ? 0 : 3;
 
   return (
     <div className="container">
