@@ -7,11 +7,11 @@
  * Usage: npm run demo:plan
  */
 
-import { VnxProvenanceClient, fixtureClaim } from '../src/index.js';
+import { ProvenanceClient, fixtureClaim } from '../src/index.js';
 import type { ProvenanceClaim } from '../src/index.js';
 
 function main(): void {
-  const client = new VnxProvenanceClient();
+  const client = new ProvenanceClient();
   console.log('Registered agents:', client.registry.list().map(r => r.id).join(', '));
 
   console.log('\n=== Valid claim ===');

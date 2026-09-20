@@ -3,7 +3,7 @@
  */
 
 import {
-  VnxProvenanceClient,
+  ProvenanceClient,
   ProvenanceSwarmCoordinator,
   ProvenanceReceiptBuilder,
   HieroDoubleVerifier,
@@ -238,9 +238,9 @@ describe('AgentRegistry', () => {
   });
 });
 
-describe('VnxProvenanceClient', () => {
+describe('ProvenanceClient', () => {
   it('verifies a claim end-to-end with no credentials', () => {
-    const { receipt, report } = new VnxProvenanceClient().verifyClaim(validClaim());
+    const { receipt, report } = new ProvenanceClient().verifyClaim(validClaim());
     expect(receipt.verdict).toBe('verified');
     expect(report.verdict).toBe('accepted');
   });

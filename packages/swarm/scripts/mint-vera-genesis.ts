@@ -11,7 +11,7 @@
  * mint serial #1 with the HIP-412 metadata JSON as its on-chain metadata.
  */
 import {
-  VnxProvenanceClient,
+  ProvenanceClient,
   veraGenesisClaim,
   HederaAnchor,
 } from '../src/index.js';
@@ -32,7 +32,7 @@ async function main(): Promise<void> {
   }
 
   // 1 — verify the genesis claim (offline, deterministic)
-  const client = new VnxProvenanceClient();
+  const client = new ProvenanceClient();
   const claim = veraGenesisClaim();
   const { receipt, report } = client.verifyClaim(claim);
   if (receipt.verdict !== 'verified' || report.verdict !== 'accepted') {

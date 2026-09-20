@@ -25,7 +25,7 @@ export {
   HieroDoubleVerifier,
 } from './verifier.js';
 export type { DoubleVerifierVerdict, DoubleVerifierReport } from './verifier.js';
-export { VnxProvenanceClient } from './sdk.js';
+export { ProvenanceClient } from './sdk.js';
 export type { ProvenanceVerification } from './sdk.js';
 export { fixtureClaim } from './fixture.js';
 export { HederaAnchor, configFromEnv, parseOperatorKey } from './hedera.js';

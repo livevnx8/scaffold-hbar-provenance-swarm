@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { VnxProvenanceClient } from '@provenance-swarm/swarm';
+import { ProvenanceClient } from '@provenance-swarm/swarm';
 import type { ProvenanceClaim } from '@provenance-swarm/swarm';
 
 export async function POST(req: Request) {
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { receipt, report } = new VnxProvenanceClient().verifyClaim(claim);
+    const { receipt, report } = new ProvenanceClient().verifyClaim(claim);
     return NextResponse.json({ receipt, report });
   } catch (err) {
     return NextResponse.json(

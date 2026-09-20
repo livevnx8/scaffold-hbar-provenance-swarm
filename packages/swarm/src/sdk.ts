@@ -15,7 +15,7 @@ export interface ProvenanceVerification {
   report: DoubleVerifierReport;
 }
 
-export class VnxProvenanceClient {
+export class ProvenanceClient {
   private _coordinator: ProvenanceSwarmCoordinator;
   private _verifier = new HieroDoubleVerifier();
 
