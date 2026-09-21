@@ -13,12 +13,14 @@ verifier.
 Scaffold it in one command:
 
 ```bash
-npm create scaffold-hbar@latest -- --template livevnx8/scaffold-hbar-provenance-swarm --package-manager npm --solidity-framework hardhat
+npm exec --yes create-scaffold-hbar@latest -- --template livevnx8/scaffold-hbar-provenance-swarm --solidity-framework hardhat --package-manager npm
 ```
 
 The default branch is `main`, so the bare `--template owner/repo` form resolves the
-template tarball directly. Pass `--package-manager npm` and `--solidity-framework hardhat`
-so defaults do not demand missing Yarn or attempt Foundry validation.
+template tarball directly. Pass `--solidity-framework hardhat` and `--package-manager npm`
+explicitly so the scaffold does not assume other defaults. (Written with `npm exec`
+rather than `npm create` because `create-scaffold-hbar` rewrites `npm <word>` into
+`npm run <word>` inside scaffolded markdown files.)
 
 ## Why it matters
 
@@ -194,6 +196,26 @@ Copy `packages/nextjs/.env.example` to `packages/nextjs/.env`:
 | `HEDERA_RPC_URL` | contract calls | defaults to Hashio testnet |
 
 ## Going to testnet
+
+**Prerequisites.** Node >= 20.18.3, a Hedera testnet account funded from the
+[faucet](https://portal.hedera.com) (a few testnet HBAR covers the topic
+create, registry deploy, HCS anchors, and NFT mint), and the registry deployed
+before you anchor (step 3). ECDSA operator keys (e.g. HashPack-style accounts)
+need `HEDERA_KEY_TYPE=ecdsa` in `packages/nextjs/.env`; raw 32-byte keys cannot
+be told apart by inspection and the SDK defaults to ED25519.
+
+**If anchoring fails**, the API answers 400 with a plain reason, never a
+half-written receipt:
+
+- `Hedera operator not configured` — `HEDERA_OPERATOR_ID` / `HEDERA_OPERATOR_KEY`
+  missing from `packages/nextjs/.env`.
+- `Live topic is set to the frozen Window 9 exhibit topic` — point
+  `HEDERA_TEMPLATE_TOPIC_ID` at your own topic (or leave it empty to
+  auto-create one). The exhibit topic `0.0.10569989` is read-only.
+- `No certificate token configured` — set `HEDERA_CERTIFICATE_TOKEN_ID`; the
+  anchor path does not auto-create the NFT collection.
+- `HEDERA_OPERATOR_KEY is not a usable private key for the registry path` —
+  the key does not parse for the configured `HEDERA_KEY_TYPE`.
 
 1. Create a testnet account via the [Hedera Portal](https://portal.hedera.com) and fund it from the faucet.
 2. Copy `packages/nextjs/.env.example` to `packages/nextjs/.env` and add your operator credentials.

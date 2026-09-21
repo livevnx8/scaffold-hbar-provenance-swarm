@@ -3,9 +3,9 @@ import { ethers } from 'ethers';
 import {
   HederaAnchor,
   mirrorMessageUrl,
-  verifyProvenanceReceipt,
-  ProvenanceClient,
+  parseOperatorKey,
 } from '@provenance-swarm/swarm';
+import { gateReceipt } from '@/lib/anchorGate';
 import type {
   ProvenanceReceipt,
   ProvenanceClaim,
@@ -28,59 +28,7 @@ function toBytes32(hex: string): string {
 /** Frozen Window 9 exhibit topic — never write from template live-anchor paths. */
 const FROZEN_EXHIBIT_TOPIC_ID = '0.0.10569989';
 
-/**
- * Server-side gate: refuse forged "verified" receipts before any HCS /
- * registry / NFT write. Requires the original claim so we can re-verify.
- */
-function gateReceipt(
-  receipt: ProvenanceReceipt,
-  claim: ProvenanceClaim | undefined,
-): { ok: true } | { ok: false; error: string; status: number; checks?: unknown } {
-  if (!claim || typeof claim.claimId !== 'string' || !claim.claimId) {
-    return {
-      ok: false,
-      status: 400,
-      error:
-        'Body must include the original claim alongside the receipt. Anchoring without a claim cannot re-verify provenance.',
-    };
-  }
-  if (claim.claimId !== receipt.claimId) {
-    return {
-      ok: false,
-      status: 400,
-      error: `claim.claimId (${claim.claimId}) does not match receipt.claimId (${receipt.claimId})`,
-    };
-  }
 
-  const verification = verifyProvenanceReceipt(receipt, claim);
-  if (!verification.ok) {
-    return {
-      ok: false,
-      status: 403,
-      error:
-        'Receipt failed server-side provenance verification. Forged or inconsistent receipts are not anchored.',
-      checks: verification.checks,
-    };
-  }
-
-  // Defence in depth: re-run the swarm and require an exact match so a
-  // self-consistent but fabricated receipt/claim pair cannot sail through.
-  const { receipt: recomputed } = new ProvenanceClient().verifyClaim(claim);
-  if (
-    recomputed.taskHash !== receipt.taskHash ||
-    recomputed.decisionHash !== receipt.decisionHash ||
-    recomputed.verdict !== receipt.verdict
-  ) {
-    return {
-      ok: false,
-      status: 403,
-      error:
-        'Receipt does not match a fresh verifyClaim for the posted claim. Refusing to anchor.',
-    };
-  }
-
-  return { ok: true };
-}
 
 function liveTopicId(): string | undefined {
   // Prefer HEDERA_TEMPLATE_TOPIC_ID (live template anchors). Fall back to the
@@ -127,12 +75,9 @@ export async function POST(req: Request) {
     );
   }
 
-  // Point HederaAnchor.fromEnv at the template topic under the legacy name it
-  // already reads, without ever pointing it at the exhibit topic.
-  if (process.env.HEDERA_TEMPLATE_TOPIC_ID?.trim() && !process.env.HEDERA_PROVENANCE_TOPIC_ID?.trim()) {
-    process.env.HEDERA_PROVENANCE_TOPIC_ID = process.env.HEDERA_TEMPLATE_TOPIC_ID.trim();
-  }
-
+  // HederaAnchor.fromEnv already honors both HEDERA_TEMPLATE_TOPIC_ID and the
+  // legacy HEDERA_PROVENANCE_TOPIC_ID (see configFromEnv), so no env aliasing
+  // is needed here. Never mutate process.env to do it.
   const anchor = HederaAnchor.fromEnv();
   if (!anchor) {
     return NextResponse.json(
@@ -176,7 +121,25 @@ export async function POST(req: Request) {
     try {
       const rpcUrl = process.env.HEDERA_RPC_URL || 'https://testnet.hashio.io/api';
       const provider = new ethers.JsonRpcProvider(rpcUrl);
-      const wallet = new ethers.Wallet(process.env.HEDERA_OPERATOR_KEY!, provider);
+      // Normalize through the same curve-aware parser the HCS path uses, so
+      // DER-encoded, 0x-prefixed, and raw hex operator keys all work here.
+      const keyType =
+        process.env.HEDERA_KEY_TYPE === 'ecdsa'
+          ? 'ecdsa'
+          : process.env.HEDERA_KEY_TYPE === 'ed25519'
+            ? 'ed25519'
+            : undefined;
+      let walletKey: string;
+      try {
+        walletKey =
+          '0x' + parseOperatorKey(process.env.HEDERA_OPERATOR_KEY!, keyType).toStringRaw().replace(/^0x/, '');
+      } catch {
+        throw new Error(
+          'HEDERA_OPERATOR_KEY is not a usable private key for the registry path. ' +
+            'Set HEDERA_KEY_TYPE=ecdsa|ed25519 to match the key curve.',
+        );
+      }
+      const wallet = new ethers.Wallet(walletKey, provider);
       const registry = new ethers.Contract(registryAddress, REGISTRY_ABI, wallet);
       const tx = await registry.anchorReceipt(receipt.claimId, toBytes32(receipt.decisionHash));
       const mined = await tx.wait();
