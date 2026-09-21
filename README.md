@@ -202,17 +202,29 @@ Copy `packages/nextjs/.env.example` to `packages/nextjs/.env`:
 4. Run the full claim flow in the frontend: verify → anchor → verify on mirror node.
 5. Record the transaction hashes below.
 
-**Verified testnet transactions** (historical exhibit evidence; full notes:
+**Verified testnet transactions**
+
+Historical Window 9 exhibit (read-only tape on topic `0.0.10569989`; full notes:
 [`vera-nft/LIVE_RUN.md`](./vera-nft/LIVE_RUN.md)):
 
 | Step | Transaction | HashScan link |
 |---|---|---|
 | Receipt anchor (HCS) | `0.0.9032608@1789565505.352869642` (topic `0.0.10569989`, seq 2) | [transaction](https://hashscan.io/testnet/transaction/0.0.9032608@1789565505.352869642) · [topic](https://hashscan.io/testnet/topic/0.0.10569989) |
 | Certificate NFT mint (HTS) | `0.0.9032608@1789565511.702573940` (token `0.0.10569997`, serial #1) | [transaction](https://hashscan.io/testnet/transaction/0.0.9032608@1789565511.702573940) · [token](https://hashscan.io/testnet/token/0.0.10569997) |
-| Registry deployment | _pending: runs in the build window_ | _pending_ |
 
-A fresh end-to-end run from the published template (verify → anchor → mirror re-verify,
-including the registry deployment) will be recorded here during the build window.
+**Live template path** (2026-09-21 E2E; operator `0.0.9034044`; topic ≠ exhibit; evidence:
+[`docs/e2e/E2E-TESTNET-2026-09-21.md`](./docs/e2e/E2E-TESTNET-2026-09-21.md)):
+
+| Step | Transaction | HashScan link |
+|---|---|---|
+| Registry deployment | `ProvenanceRegistry` at `0xC9231fa293113991285ed41b60906Dfb0E2CDC01` | [contract](https://hashscan.io/testnet/contract/0xC9231fa293113991285ed41b60906Dfb0E2CDC01) |
+| Template topic (live) | `0.0.10649257` (auto-created; **not** `0.0.10569989`) | [topic](https://hashscan.io/testnet/topic/0.0.10649257) |
+| Receipt anchor (HCS) | `0.0.9034044@1789999996.558665178` (topic `0.0.10649257`, seq 3) | [transaction](https://hashscan.io/testnet/transaction/0.0.9034044@1789999996.558665178) |
+| Registry `anchorReceipt` | `0xb3513ef3b0394b4a80d65b46d07ea78fa988a21668df4549267a3d8202e66ecd` | [transaction](https://hashscan.io/testnet/transaction/0xb3513ef3b0394b4a80d65b46d07ea78fa988a21668df4549267a3d8202e66ecd) |
+| Certificate collection | token `0.0.10649238` (PROVC) | [token](https://hashscan.io/testnet/token/0.0.10649238) |
+| Certificate NFT mint (HTS) | `0.0.9034044@1790000007.430466835` (serial #1) | [transaction](https://hashscan.io/testnet/transaction/0.0.9034044@1790000007.430466835) |
+| Mirror re-verify | decisionHash match on seq 3 | [mirror message](https://testnet.mirrornode.hedera.com/api/v1/topics/0.0.10649257/messages/3) |
+| Forged `/api/anchor` | tampered decisionHash → HTTP **403** | refused (no write) |
 
 ## API routes (frontend backend)
 
