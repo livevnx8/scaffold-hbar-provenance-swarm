@@ -24,10 +24,23 @@ here is edited, re-anchored, or claimed as this template's output.
 
 Reliability count from this tape: **n = 2** (833, 834). Seq 835 does not count.
 
-Why this tape exists in the template: the verify route pulls these sequences
-read-only from the public mirror to demonstrate the pattern — a fail-closed
-gate between an AI's MAKE decision and the world, where a correctly refused
-run is a first-class, hashed, public record. The narrative record is
-`decision-integrity-record.pdf` in this directory. The template's own live
-evidence (its own testnet account, its own sequences) is separate and required
-by the score-ready gate.
+## Why this tape is in the template
+
+Window 9 is a **historical exhibit**: a fail-closed gate between an AI's MAKE
+decision and the world, where a correctly refused run is a first-class, hashed,
+public record. The narrative record is `decision-integrity-record.pdf` in this
+directory.
+
+This template does **not** pull Window 9 sequences from the public mirror in
+any verify or anchor path. The identifiers above are documentation so a
+stranger can open HashScan or the mirror REST API themselves. Template live
+anchors must use a **separate** topic via `HEDERA_TEMPLATE_TOPIC_ID` (or leave
+it empty to auto-create one). Writing to `0.0.10569989` from template paths is
+refused.
+
+HashScan quick links:
+
+- [Topic 0.0.10569989](https://hashscan.io/testnet/topic/0.0.10569989)
+- [Seq 833 tx](https://hashscan.io/testnet/transaction/0.0.9032608@1789868602.323750400)
+- [Seq 834 tx](https://hashscan.io/testnet/transaction/0.0.9032608@1789869656.328037066)
+- [Seq 835 tx](https://hashscan.io/testnet/transaction/0.0.9032608@1789870540.047570332)
