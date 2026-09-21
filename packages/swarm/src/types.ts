@@ -12,7 +12,10 @@ export interface OriginAttestation {
   /** ISO date, YYYY-MM-DD */
   harvestDate: string;
   statement: string;
-  /** sha256 hex of "farm|region|harvestDate|statement" */
+  /**
+   * sha256 hex of the canonical JSON array [farm, region, harvestDate, statement].
+   * Produced by attestationHashFor(); never a delimiter-joined string (F3).
+   */
   attestationHash: string;
 }
 
@@ -20,7 +23,10 @@ export interface CustodyLink {
   holder: string;
   /** ISO datetime */
   receivedAt: string;
-  /** sha256 hex of "previousHolder|holder|receivedAt" */
+  /**
+   * sha256 hex of the canonical JSON array [prevHolder, holder, receivedAt].
+   * Produced by handoffHashFor(); never a delimiter-joined string (F3).
+   */
   handoffHash: string;
 }
 
@@ -52,7 +58,12 @@ export interface WorkerVerdict {
 export type ProvenanceVerdict = 'verified' | 'needs_review' | 'rejected';
 
 export interface ProvenanceReceipt {
-  version: '1.0';
+  /**
+   * Hash-construction version. '1.0' = legacy delimiter-framed worker payload
+   * (verifiable, but with demonstrated collision class F2/F3). '1.1' =
+   * structured canonical payload. The verifier recomputes per this field.
+   */
+  version: ReceiptVersion;
   timestamp: number;
   claimId: string;
   taskHash: string;
@@ -60,6 +71,9 @@ export interface ProvenanceReceipt {
   verdict: ProvenanceVerdict;
   results: WorkerVerdict[];
 }
+
+/** Receipt hash-construction versions. '1.1' is current; '1.0' stays readable. */
+export type ReceiptVersion = '1.0' | '1.1';
 
 export interface VerificationCheck {
   name: string;

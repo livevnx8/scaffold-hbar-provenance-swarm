@@ -7,7 +7,7 @@
  */
 
 import { ProvenanceClaim, WorkerVerdict } from './types.js';
-import { sha256, isHex64 } from './hash.js';
+import { isHex64, attestationHashFor, handoffHashFor } from './hash.js';
 
 export interface ProvenanceWorker {
   readonly id: string;
@@ -65,7 +65,7 @@ export class OriginAttestationWorker implements ProvenanceWorker {
       confidence += 0.2;
     }
 
-    const expected = sha256(`${o.farm}|${o.region}|${o.harvestDate}|${o.statement}`);
+    const expected = attestationHashFor(o.farm, o.region, o.harvestDate, o.statement);
     if (o.attestationHash !== expected) {
       passed = false;
       findings.push(
@@ -119,7 +119,7 @@ export class CustodyChainWorker implements ProvenanceWorker {
 
     for (let i = 0; i < chain.length; i++) {
       const link = chain[i];
-      const expected = sha256(`${prevHolder}|${link.holder}|${link.receivedAt}`);
+      const expected = handoffHashFor(prevHolder, link.holder, link.receivedAt);
       if (link.handoffHash !== expected) {
         passed = false;
         findings.push(`link ${i} (${prevHolder} → ${link.holder}): handoff hash mismatch`);

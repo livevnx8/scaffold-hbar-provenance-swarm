@@ -35,7 +35,7 @@ export default function ReceiptCard({
       <h2>3 · Tamper-evident receipt</h2>
       <p className="sub">
         The coordinator binds the claim and worker verdicts into a receipt. The double-verifier then
-        re-checks it in two independent passes that must agree.
+        re-checks it in two check groups (hash integrity, policy) that must both pass.
       </p>
 
       <div className={`verdict-banner ${verdictClass}`}>

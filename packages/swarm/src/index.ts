@@ -3,7 +3,7 @@
  */
 
 export * from './types.js';
-export { sha256, canonicalize, isHex64 } from './hash.js';
+export { sha256, canonicalize, isHex64, attestationHashFor, handoffHashFor } from './hash.js';
 export {
   OriginAttestationWorker,
   CustodyChainWorker,
@@ -19,6 +19,9 @@ export {
   taskHashFor,
   decisionHashFor,
   verdictFor,
+  RECEIPT_VERSION_1_0,
+  RECEIPT_VERSION_1_1,
+  CURRENT_RECEIPT_VERSION,
 } from './receipt-builder.js';
 export {
   verifyProvenanceReceipt,

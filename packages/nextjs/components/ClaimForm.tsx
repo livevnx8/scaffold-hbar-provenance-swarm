@@ -98,7 +98,7 @@ export default function ClaimForm({
         </div>
         <div className="field">
           <label>Attestation hash (sha256)</label>
-          <input value={claim.origin.attestationHash} onChange={(e) => setOrigin('attestationHash', e.target.value)} placeholder="sha256(farm|region|harvestDate|statement)" />
+          <input value={claim.origin.attestationHash} onChange={(e) => setOrigin('attestationHash', e.target.value)} placeholder="attestationHashFor(farm, region, harvestDate, statement)" />
         </div>
       </div>
       <div className="field">

@@ -7,7 +7,7 @@
  * recompute, so this fixture verifies cleanly.
  */
 
-import { sha256 } from './hash.js';
+import { attestationHashFor, handoffHashFor } from './hash.js';
 import { ProvenanceClaim } from './types.js';
 
 export function fixtureClaim(): ProvenanceClaim {
@@ -24,18 +24,18 @@ export function fixtureClaim(): ProvenanceClaim {
       region,
       harvestDate,
       statement,
-      attestationHash: sha256(`${farm}|${region}|${harvestDate}|${statement}`),
+      attestationHash: attestationHashFor(farm, region, harvestDate, statement),
     },
     custody: [
       {
         holder: 'Cooperativa Andina',
         receivedAt: '2026-03-20T09:00:00Z',
-        handoffHash: sha256(`${farm}|Cooperativa Andina|2026-03-20T09:00:00Z`),
+        handoffHash: handoffHashFor(farm, 'Cooperativa Andina', '2026-03-20T09:00:00Z'),
       },
       {
         holder: 'Pacific Roasters',
         receivedAt: '2026-04-02T14:30:00Z',
-        handoffHash: sha256('Cooperativa Andina|Pacific Roasters|2026-04-02T14:30:00Z'),
+        handoffHash: handoffHashFor('Cooperativa Andina', 'Pacific Roasters', '2026-04-02T14:30:00Z'),
       },
     ],
     documents: [

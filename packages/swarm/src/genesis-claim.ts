@@ -10,7 +10,7 @@ import { createHash } from 'crypto';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { sha256 } from './hash.js';
+import { attestationHashFor, handoffHashFor } from './hash.js';
 import type { ProvenanceClaim } from './types.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -35,13 +35,13 @@ export function genesisClaim(): ProvenanceClaim {
       region: builder,
       harvestDate: buildDate,
       statement,
-      attestationHash: sha256(`${builder}|${builder}|${buildDate}|${statement}`),
+      attestationHash: attestationHashFor(builder, builder, buildDate, statement),
     },
     custody: [
       {
         holder: 'Stanley · livevnx8',
         receivedAt: '2026-09-16T13:00:00Z',
-        handoffHash: sha256(`${builder}|Stanley · livevnx8|2026-09-16T13:00:00Z`),
+        handoffHash: handoffHashFor(builder, 'Stanley · livevnx8', '2026-09-16T13:00:00Z'),
       },
     ],
     documents: [

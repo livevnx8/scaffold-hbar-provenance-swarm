@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     }
     const { receipt } = new ProvenanceClient().verifyClaim(claim);
     const expectedTask = taskHashFor(claim);
-    const expectedDecision = decisionHashFor(receipt.results, receipt.taskHash);
+    const expectedDecision = decisionHashFor(receipt.results, receipt.taskHash, receipt.version);
     if (receipt.taskHash !== expectedTask || receipt.decisionHash !== expectedDecision) {
       return NextResponse.json(
         {
