@@ -109,7 +109,6 @@ export function setEnvValue(lines: string[], key: string, value: string): EnvUpd
   }
   const next = [...lines];
   const superseded: string[] = [];
-  const last = idx[idx.length - 1];
   const lastAlreadyCanonical = liveValues[liveValues.length - 1] === value;
   const toComment = lastAlreadyCanonical ? idx.slice(0, -1) : idx;
   for (const i of toComment) {

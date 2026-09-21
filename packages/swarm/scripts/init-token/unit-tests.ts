@@ -23,7 +23,6 @@ import {
   shouldWarnChmod,
   LOW_SUPPLY_WARN_FRACTION,
   type PubCandidate,
-  type KeyMaterial,
 } from './lib.js';
 
 let passed = 0;
