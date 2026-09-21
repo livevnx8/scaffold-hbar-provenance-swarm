@@ -7,6 +7,7 @@ import {
   FROZEN_EXHIBIT_TOPIC_ID,
 } from '@provenance-swarm/swarm';
 import { gateReceipt } from '@/lib/anchorGate';
+import { registryGuard } from '@/lib/registryGuard';
 import type {
   ProvenanceReceipt,
   ProvenanceClaim,
@@ -130,6 +131,15 @@ export async function POST(req: Request) {
   const network: HederaNetworkName =
     process.env.HEDERA_NETWORK === 'mainnet' ? 'mainnet' : 'testnet';
 
+  // One-anchor-per-claim is enforced by the registry contract, and only by it.
+  // Without it the same claim could anchor twice and mint twice (F6), so the
+  // route fails closed here, before any HCS or NFT write.
+  const guard = registryGuard();
+  if (!guard.ok) {
+    return NextResponse.json({ ok: false, error: guard.error, ...out }, { status: 400 });
+  }
+  const registryAddress = guard.address;
+
   // 1 — HCS anchor
   try {
     const anchored = await anchor.anchorReceipt(receipt);
@@ -147,11 +157,8 @@ export async function POST(req: Request) {
     };
   }
 
-  // 2 — registry contract
-  const registryAddress = process.env.HEDERA_REGISTRY_ADDRESS?.trim();
-  if (!registryAddress) {
-    out.contract = { ok: false, skipped: 'no-registry' };
-  } else {
+  // 2 — registry contract (required: enforced above, so this branch always runs)
+  {
     try {
       const rpcUrl = process.env.HEDERA_RPC_URL || 'https://testnet.hashio.io/api';
       const provider = new ethers.JsonRpcProvider(rpcUrl);
@@ -233,7 +240,7 @@ export async function POST(req: Request) {
   }
 
   // All-failed or partial-anchor → 502 with top-level { ok: false }.
-  // Skipped stages (no-registry / verdict-not-verified) are not failures.
+  // A skipped NFT stage (verdict-not-verified) is not a failure.
   const hcsFailed = !out.hcs.ok;
   const contractFailed = !out.contract.ok && !out.contract.skipped;
   const nftFailed = !out.nft.ok && !out.nft.skipped;

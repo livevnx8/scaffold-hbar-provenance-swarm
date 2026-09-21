@@ -31,10 +31,13 @@ npm run lint                       # eslint across all workspaces
   no randomness, no credentials inside `packages/swarm/src`. Hedera I/O lives in `src/hedera.ts` behind
   explicit env config and is never exercised by the unit tests.
 - Receipts are the trust primitive: `taskHash = sha256(canonical claim)`,
-  `decisionHash = sha256(taskHash + worker results)`. Never change the hash construction without bumping
+  `decisionHash` is versioned — `1.0` legacy delimiter-framed payload (verifiable,
+  collision class F2/F3), `1.1` structured canonical payload (current). The verifier
+  recomputes per `receipt.version`. Never change the hash construction without bumping
   `ProvenanceReceipt.version`.
-- The double-verifier's two passes (A: hash integrity, B: policy) must stay independent. One shared
-  helper computing both would defeat the point.
+- The double-verifier's two check groups (A: hash integrity, B: policy) must both pass;
+  disagreement is reject-on-any-fail. The groups are not independent verifiers — both run
+  inside the one `verifyProvenanceReceipt` call. Never claim multi-party independence.
 - Frontend talks to Hedera through the Hashio JSON-RPC endpoints and mirror-node REST, matching the
   scaffold-hbar baseline configuration. No private keys in the browser; signing stays server-side.
 

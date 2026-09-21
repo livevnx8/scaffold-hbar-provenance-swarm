@@ -3,18 +3,27 @@
  *
  * verifyProvenanceReceipt recomputes both hashes and checks that the verdict
  * is consistent with the worker results. HieroDoubleVerifier wraps it as a
- * first-class agent with two independent passes that must agree:
+ * first-class agent with two check groups that must both pass:
  *   Pass A — hash integrity (task_hash, decision_hash recomputation)
  *   Pass B — policy (verdict_consistency, worker_quorum)
+ * The groups are not independent verifiers: both run inside the one
+ * verifyProvenanceReceipt call, and disagreement is reject-on-any-fail.
  */
 
 import {
   ProvenanceClaim,
   ProvenanceReceipt,
+  ReceiptVersion,
   VerificationCheck,
   VerificationResult,
 } from './types.js';
-import { taskHashFor, decisionHashFor, verdictFor } from './receipt-builder.js';
+import {
+  taskHashFor,
+  decisionHashFor,
+  verdictFor,
+  RECEIPT_VERSION_1_0,
+  RECEIPT_VERSION_1_1,
+} from './receipt-builder.js';
 
 function check(name: string, ok: boolean, detail: string): VerificationCheck {
   return { name, ok, detail };
@@ -37,14 +46,26 @@ export function verifyProvenanceReceipt(
     ),
   );
 
-  const expectedDecisionHash = decisionHashFor(receipt.results, receipt.taskHash);
+  const expectedDecisionHash = (() => {
+    try {
+      const v: ReceiptVersion = receipt.version;
+      if (v !== RECEIPT_VERSION_1_0 && v !== RECEIPT_VERSION_1_1) {
+        return null;
+      }
+      return decisionHashFor(receipt.results, receipt.taskHash, v);
+    } catch {
+      return null;
+    }
+  })();
   checks.push(
     check(
       'decision_hash',
-      receipt.decisionHash === expectedDecisionHash,
-      receipt.decisionHash === expectedDecisionHash
-        ? expectedDecisionHash
-        : `expected ${expectedDecisionHash}, got ${receipt.decisionHash}`,
+      expectedDecisionHash !== null && receipt.decisionHash === expectedDecisionHash,
+      expectedDecisionHash === null
+        ? `unsupported receipt version: ${String(receipt.version)}`
+        : receipt.decisionHash === expectedDecisionHash
+          ? expectedDecisionHash
+          : `expected ${expectedDecisionHash}, got ${receipt.decisionHash}`,
     ),
   );
 

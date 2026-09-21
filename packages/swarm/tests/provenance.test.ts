@@ -12,7 +12,8 @@ import {
   OriginAttestationWorker,
   CustodyChainWorker,
   DocumentHashWorker,
-  sha256,
+  attestationHashFor,
+  handoffHashFor,
   verdictFor,
   ProvenanceClaim,
 } from '../src/index.js';
@@ -32,18 +33,18 @@ function validClaim(): ProvenanceClaim {
       region,
       harvestDate,
       statement,
-      attestationHash: sha256(`${farm}|${region}|${harvestDate}|${statement}`),
+      attestationHash: attestationHashFor(farm, region, harvestDate, statement),
     },
     custody: [
       {
         holder: 'Cooperativa Andina',
         receivedAt: '2026-03-20T09:00:00Z',
-        handoffHash: sha256(`${farm}|Cooperativa Andina|2026-03-20T09:00:00Z`),
+        handoffHash: handoffHashFor(farm, 'Cooperativa Andina', '2026-03-20T09:00:00Z'),
       },
       {
         holder: 'Pacific Roasters',
         receivedAt: '2026-04-02T14:30:00Z',
-        handoffHash: sha256('Cooperativa Andina|Pacific Roasters|2026-04-02T14:30:00Z'),
+        handoffHash: handoffHashFor('Cooperativa Andina', 'Pacific Roasters', '2026-04-02T14:30:00Z'),
       },
     ],
     documents: [
@@ -97,8 +98,11 @@ describe('OriginAttestationWorker', () => {
   it('rejects impossible calendar dates like 2026-99-99', () => {
     const claim = validClaim();
     claim.origin.harvestDate = '2026-99-99';
-    claim.origin.attestationHash = sha256(
-      `${claim.origin.farm}|${claim.origin.region}|${claim.origin.harvestDate}|${claim.origin.statement}`,
+    claim.origin.attestationHash = attestationHashFor(
+      claim.origin.farm,
+      claim.origin.region,
+      claim.origin.harvestDate,
+      claim.origin.statement,
     );
     const result = new OriginAttestationWorker().verify(claim);
     expect(result.passed).toBe(false);

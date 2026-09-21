@@ -128,6 +128,7 @@ export class HederaAnchor {
     }
     const message = JSON.stringify({
       claimId: receipt.claimId,
+      version: receipt.version,
       taskHash: receipt.taskHash,
       decisionHash: receipt.decisionHash,
       verdict: receipt.verdict,

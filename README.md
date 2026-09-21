@@ -155,20 +155,29 @@ Every step is deterministic: no models, no randomness, no network calls in the v
 1. **Canonicalize and hash the claim**: `taskHash = sha256(canonical claim JSON)`. Any
    byte-level change to the claim changes this hash.
 2. **Run the three workers**: each recomputes the hash it is responsible for and compares:
-   - *Origin Attestation Verifier* recomputes `sha256(farm|region|harvestDate|statement)`.
-   - *Custody Chain Verifier* recomputes each `sha256(prevHolder|holder|receivedAt)` and
-     checks the chain links end-to-end.
+   - *Origin Attestation Verifier* recomputes `attestationHashFor(farm, region, harvestDate,
+     statement)` — a canonical JSON tuple, never a delimiter-joined string.
+   - *Custody Chain Verifier* recomputes each `handoffHashFor(prevHolder, holder, receivedAt)`
+     and checks the chain links end-to-end.
    - *Document Hash Verifier* checks every document hash is well-formed 64-char hex.
-3. **Build the receipt**: `decisionHash = sha256(taskHash + worker results)`. The verdict
+3. **Build the receipt** (version `1.1`): `decisionHash = sha256(canonical {v, taskHash,
+   workers})` where workers are sorted by `workerId`, confidence is a fixed-point
+   integer (basis points), and findings are hashed as JSON array elements. Version `1.0`
+   receipts (legacy delimiter-framed payload) remain verifiable; the verifier recomputes
+   per `receipt.version` and rejects unknown versions. The verdict
    is `verified` only if every worker passes.
-4. **Double-verify**: two independent passes must agree: Pass A re-derives both hashes from
-   the claim; Pass B checks verdict/worker consistency. A tampered claim is *truthfully
+4. **Double-verify**: two check groups must both pass: Pass A re-derives both hashes from
+   the claim; Pass B checks verdict/worker consistency. The groups are not independent
+   verifiers — both run inside the one `verifyProvenanceReceipt` call, and disagreement
+   is reject-on-any-fail. A tampered claim is *truthfully
    recorded* as `needs_review`. The receipt never lies about what it saw.
 5. **Anchor gate**: `POST /api/anchor` requires the original claim and re-runs
    `verifyProvenanceReceipt` (and a fresh `verifyClaim`) **before** any HCS, registry, or
    NFT write. Forged "verified" receipts are rejected with HTTP 403. Receipts that fail
    verification are never minted an NFT; `needs_review` receipts may still be anchored with
-   their verdict truthfully recorded.
+   their verdict truthfully recorded. The route additionally requires
+   `HEDERA_REGISTRY_ADDRESS`: without the registry, one-anchor-per-claim is unenforceable,
+   so the route fails closed (HTTP 400) before any write.
 
 ## Check-a-receipt honesty
 
@@ -224,7 +233,10 @@ chains are not accepted as finalized receipts:
 - **500**: server misconfig (`Hedera operator not configured`).
 - **409**: duplicate registry anchor (`This claim is already anchored on-chain`).
 - **502**: partial or all-failed HCS / registry / NFT stages (`{ ok: false }` plus
-  per-stage results). Skipped stages (no registry / non-verified NFT) are not failures.
+  per-stage results). A skipped NFT stage (verdict-not-verified) is not a failure.
+  There is no `no-registry` skip anymore: anchoring without `HEDERA_REGISTRY_ADDRESS`
+  fails closed with 400 before any write, because one-anchor-per-claim is a
+  registry-present property.
 - `No certificate token configured` surfaces as a failed NFT stage (502 when the
   mint was attempted); run `npm run init:token` (or set `HEDERA_CERTIFICATE_TOKEN_ID`
   out-of-band). The anchor path does not auto-create the NFT collection.
@@ -285,14 +297,34 @@ npm test --workspace @provenance-swarm/contracts   # anchor/lookup/verify, one-a
 npm run build --workspace @provenance-swarm/nextjs  # production build must compile clean
 ```
 
+## Receipt versions
+
+- **1.1** (current): structured decision payload. `decisionHash = sha256(canonical
+  {v, taskHash, workers})` with workers sorted by `workerId`, confidence as fixed-point
+  integer basis points, findings as JSON array elements, version embedded. No delimiters,
+  no float formatting, no order dependence. Origin/custody content hashes are canonical
+  JSON tuples via `attestationHashFor` / `handoffHashFor`.
+- **1.0** (legacy): `decisionHash = sha256(taskHash + ":" + workerResultsPayload)` with the
+  payload delimiter-framed (`|` inside findings, `;` between workers) and confidence via
+  `toFixed(4)`. Verifiable, but with a demonstrated collision class: `findings:["a|b"]`
+  and `["a","b"]` hash identically, and claim-controlled strings (holder, document names,
+  farm) interpolated into findings or `farm|region|...` preimages can reproduce framing
+  (adversarial findings F2/F3, 2026-09-21). Kept readable so existing anchors stay checkable;
+  new receipts are always 1.1.
+- The `/api/anchor` route requires `HEDERA_REGISTRY_ADDRESS` and fails closed without it:
+  one-anchor-per-claim is enforced by the registry contract alone, so anchoring or minting
+  without a registry would allow repeat anchors and repeat mints of the same claim
+  (adversarial finding F6, 2026-09-21).
+
 ## Honest boundaries
 
 - The verifier workers are **deterministic scoring logic**, not AI models. The "agent swarm"
   framing refers to the worker/coordinator/registry architecture with verifiable receipts.
 - Live Hedera behavior was validated on testnet (see the E2E evidence table above). Offline
   paths remain covered by the credential-free unit suites.
-- The double-verifier is two independent verification *passes* over the same receipt, not
-  two independent external systems. When it reports "accepted" on a `needs_review` receipt,
+- The double-verifier is two *check groups* over the same receipt (A: hash integrity,
+  B: policy), not two independent external systems, and not two independent passes.
+  Disagreement is reject-on-any-fail. When it reports "accepted" on a `needs_review` receipt,
   that means the receipt is authentic and truthfully records `needs_review`, not that the
   claim is verified.
 - Hash-chained receipts and mirror re-verification are solid engineering, not novel
