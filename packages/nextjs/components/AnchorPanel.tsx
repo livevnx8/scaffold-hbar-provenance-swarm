@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { ProvenanceReceipt, ChainConfig, AnchorResults } from '../lib/types';
+import type { ProvenanceReceipt, ProvenanceClaim, ChainConfig, AnchorResults } from '../lib/types';
 import { hashscanTx, hashscanTopic, hashscanToken, hashscanContract } from '../lib/types';
 
-export default function AnchorPanel({ receipt }: { receipt: ProvenanceReceipt }) {
+export default function AnchorPanel({ receipt, claim }: { receipt: ProvenanceReceipt; claim: ProvenanceClaim | null }) {
   const [config, setConfig] = useState<ChainConfig | null>(null);
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<AnchorResults | null>(null);
@@ -31,7 +31,7 @@ export default function AnchorPanel({ receipt }: { receipt: ProvenanceReceipt })
       const res = await fetch('/api/anchor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ receipt }),
+        body: JSON.stringify({ receipt, claim }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -88,6 +88,12 @@ export default function AnchorPanel({ receipt }: { receipt: ProvenanceReceipt })
         </div>
       )}
 
+      {!claim && (
+        <div className="notice">
+          No claim is attached to this receipt in the UI session. Re-run verification before anchoring —
+          the server refuses anchors without a claim it can re-verify.
+        </div>
+      )}
       {error && <div className="notice error">{error}</div>}
 
       <div className="anchor-actions">

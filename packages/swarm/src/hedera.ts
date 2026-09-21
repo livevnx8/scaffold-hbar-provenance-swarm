@@ -22,6 +22,9 @@ import {
 } from '@hashgraph/sdk';
 import { ProvenanceReceipt } from './types.js';
 
+/** Frozen Window 9 exhibit topic — template live paths must never write here. */
+export const FROZEN_EXHIBIT_TOPIC_ID = '0.0.10569989';
+
 export interface HederaAnchorConfig {
   operatorId: string;
   operatorKey: string;
@@ -54,7 +57,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): HederaAncho
     operatorId,
     operatorKey,
     network: env.HEDERA_NETWORK === 'mainnet' ? 'mainnet' : 'testnet',
-    topicId: env.HEDERA_PROVENANCE_TOPIC_ID,
+    topicId: env.HEDERA_TEMPLATE_TOPIC_ID || env.HEDERA_PROVENANCE_TOPIC_ID,
     certificateTokenId: env.HEDERA_CERTIFICATE_TOKEN_ID,
     keyType,
   };
@@ -93,7 +96,15 @@ export class HederaAnchor {
 
   /** Create the provenance topic (or reuse HEDERA_PROVENANCE_TOPIC_ID when set). */
   async ensureTopic(): Promise<string> {
-    if (this.config.topicId) return this.config.topicId;
+    if (this.config.topicId) {
+      if (this.config.topicId === FROZEN_EXHIBIT_TOPIC_ID) {
+        throw new Error(
+          `Refusing to write to frozen Window 9 exhibit topic ${FROZEN_EXHIBIT_TOPIC_ID}. ` +
+            'Set HEDERA_TEMPLATE_TOPIC_ID to a separate live topic (or leave it empty to auto-create one).',
+        );
+      }
+      return this.config.topicId;
+    }
     const tx = await new TopicCreateTransaction()
       .setTopicMemo('Provenance Swarm receipt anchors')
       .execute(this.client);
@@ -107,6 +118,11 @@ export class HederaAnchor {
   /** Anchor a receipt hash on HCS. Returns the topic, sequence number, and tx id. */
   async anchorReceipt(receipt: ProvenanceReceipt): Promise<AnchorRecord> {
     const topicId = await this.ensureTopic();
+    if (topicId === FROZEN_EXHIBIT_TOPIC_ID) {
+      throw new Error(
+        `Refusing to write to frozen Window 9 exhibit topic ${FROZEN_EXHIBIT_TOPIC_ID}.`,
+      );
+    }
     const message = JSON.stringify({
       claimId: receipt.claimId,
       taskHash: receipt.taskHash,
@@ -155,7 +171,8 @@ export class HederaAnchor {
   /**
    * Mint a provenance-certificate NFT carrying the receipt's decision hash.
    * Pass custom `metadata` bytes (e.g. a HIP-412 JSON document) for art NFTs;
-   * defaults to the compact claim/decision/verdict JSON.
+   * defaults to the compact `<claimId>/<decisionHash>` pointer (HTS NFT metadata
+   * is capped at 100 bytes — the full claim/decision/verdict JSON exceeds it).
    */
   async mintCertificate(
     receipt: ProvenanceReceipt,
@@ -167,16 +184,16 @@ export class HederaAnchor {
         'No certificate token configured — run createCertificateToken() once, then set HEDERA_CERTIFICATE_TOKEN_ID',
       );
     }
-    const metadata =
-      opts?.metadata ??
-      Buffer.from(
-        JSON.stringify({
-          claimId: receipt.claimId,
-          decisionHash: receipt.decisionHash,
-          verdict: receipt.verdict,
-        }),
-        'utf8',
-      );
+    let metadata = opts?.metadata;
+    if (!metadata) {
+      const compact = `${receipt.claimId}/${receipt.decisionHash}`;
+      if (Buffer.byteLength(compact, 'utf8') > 100) {
+        // Prefer decision hash alone when claimId is long; always ≤ 64 bytes.
+        metadata = Buffer.from(receipt.decisionHash, 'utf8');
+      } else {
+        metadata = Buffer.from(compact, 'utf8');
+      }
+    }
     const tx = await new TokenMintTransaction()
       .setTokenId(tokenId)
       .setMetadata([metadata])

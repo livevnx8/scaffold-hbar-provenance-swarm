@@ -15,6 +15,7 @@ export default function Home() {
   const [config, setConfig] = useState<ChainConfig | null>(null);
   const [busy, setBusy] = useState(false);
   const [runId, setRunId] = useState(0);
+  const [claim, setClaim] = useState<ProvenanceClaim | null>(null);
   const [receipt, setReceipt] = useState<ProvenanceReceipt | null>(null);
   const [report, setReport] = useState<DoubleVerifierReport | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -26,16 +27,17 @@ export default function Home() {
       .catch(() => setConfig(null));
   }, []);
 
-  async function verify(claim: ProvenanceClaim) {
+  async function verify(nextClaim: ProvenanceClaim) {
     setBusy(true);
     setError(null);
     setReceipt(null);
     setReport(null);
+    setClaim(nextClaim);
     try {
       const res = await fetch('/api/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(claim),
+        body: JSON.stringify(nextClaim),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -52,7 +54,8 @@ export default function Home() {
     }
   }
 
-  const stage = busy ? 1 : !receipt ? 0 : 3;
+  // Claim(0) → Verify(1, busy) → Receipt(2) → Anchor(3 shown as next once receipt exists)
+  const stage = busy ? 1 : !receipt ? 0 : 2;
 
   return (
     <div className="container">
@@ -65,9 +68,16 @@ export default function Home() {
           <span className="brand">Provenance</span> Swarm
         </h1>
         <p>
-          Verifiable supply-chain provenance on Hedera. A deterministic agent swarm checks a product's
-          origin, custody chain, and documents — then anchors the tamper-evident receipt on-chain for
-          anyone to replay.
+          <strong>Why it matters.</strong> Supply-chain claims are easy to forge and hard to re-check.
+          This template turns a product claim into a tamper-evident receipt: a deterministic swarm
+          verifies origin, custody, and documents, binds the verdicts into hashed receipts, and can
+          anchor them on Hedera so a stranger can replay the proof without trusting the original verifier.
+        </p>
+        <p className="sub" style={{ marginTop: '0.75rem' }}>
+          Offline path: load the coffee fixture, run verification (GREEN), then use{' '}
+          <strong>Tamper attestation</strong> and re-run to see a refused claim (RED) explain itself.
+          CLI twin: <code style={{ fontFamily: 'var(--mono)' }}>npm run demo</code> (~30s after install;
+          first <code style={{ fontFamily: 'var(--mono)' }}>npm install</code> can take ~9 minutes).
         </p>
       </header>
 
@@ -101,7 +111,7 @@ export default function Home() {
             <>
               <WorkerResults key={`w-${runId}`} results={receipt.results} />
               <ReceiptCard receipt={receipt} report={report} />
-              <AnchorPanel key={`a-${runId}`} receipt={receipt} />
+              <AnchorPanel key={`a-${runId}`} receipt={receipt} claim={claim} />
             </>
           )}
         </>
@@ -113,7 +123,7 @@ export default function Home() {
         <div>
           <strong>For developers.</strong> Scaffold your own from this template:
         </div>
-        <code>npm create scaffold-hbar@latest -- --template livevnx8/scaffold-hbar-provenance-swarm</code>
+        <code>npm create scaffold-hbar@latest -- --template livevnx8/scaffold-hbar-provenance-swarm#master --package-manager npm --solidity-framework hardhat</code>
         <div style={{ marginTop: '0.75rem' }}>
           Offline verification runs with no Hedera account. Anchoring, the registry contract, and
           certificate mints need testnet credentials in <code>packages/nextjs/.env</code>.

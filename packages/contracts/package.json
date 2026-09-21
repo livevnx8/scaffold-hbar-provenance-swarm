@@ -29,5 +29,8 @@
   "license": "MIT",
   "name": "@provenance-swarm/contracts",
   "private": true,
-  "version": "0.1.0"
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=20.18.3"
+  }
 }

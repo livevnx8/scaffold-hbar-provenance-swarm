@@ -3,7 +3,7 @@
 ## What this is
 
 A Scaffold-HBAR external template: verifiable supply-chain provenance via a deterministic agent swarm,
-anchored on Hedera. Forkable via `npm create scaffold-hbar@latest -- --template livevnx8/scaffold-hbar-provenance-swarm`.
+anchored on Hedera. Forkable via `npm create scaffold-hbar@latest -- --template livevnx8/scaffold-hbar-provenance-swarm#master --package-manager npm --solidity-framework hardhat` (`#master` because default branch is master not main; npm+hardhat flags avoid Yarn/Foundry defaults).
 
 ## Layout
 
