@@ -23,6 +23,8 @@ Foundry validation.
 
 ## Why it matters
 
+The swarm pattern separates independently testable verification responsibilities while keeping the final provenance receipt deterministic and reproducible.
+
 ### What this does not prove
 
 - **Not real-world truth.** A self-consistent fabricated claim (hashes that recompute and
