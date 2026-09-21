@@ -70,8 +70,9 @@ export default function Home() {
         <p>
           <strong>Why it matters.</strong> Supply-chain claims are easy to forge and hard to re-check.
           This template turns a product claim into a tamper-evident receipt: a deterministic swarm
-          verifies origin, custody, and documents, binds the verdicts into hashed receipts, and can
-          anchor them on Hedera so a stranger can check a presented receipt against the chain without trusting the original verifier.
+          verifies origin, custody, and documents, binds the verdicts into the receipt with
+          cryptographic hashes, and can anchor it on Hedera, so a stranger can check a presented
+          receipt against the chain without trusting the original verifier.
         </p>
         <p className="sub" style={{ marginTop: '0.75rem' }}>
           Offline path: load the coffee fixture, run verification (GREEN), then use{' '}

@@ -207,7 +207,7 @@ export default function ClaimForm({
       <p className="sub" style={{ marginTop: '0.75rem' }}>
         Tip: load the fixture and verify (GREEN), then click <strong>Tamper attestation</strong> and
         verify again. A tampered attestation yields a <code>needs_review</code> verdict that names the
-        failing worker — the receipt records that outcome truthfully; it is not mintable as verified.
+        failing worker. The receipt records that outcome truthfully; it is not mintable as verified.
       </p>
     </div>
   );

@@ -8,11 +8,18 @@ frontend walks anyone through claim to verification to receipt to anchoring, and
 party can re-check a receipt against the chain or the mirror node without trusting the
 verifier.
 
-Scaffold it in one command:
+Scaffold it in one command (non-interactive — pass a positional project name and/or `-y`
+so the CLI does not hang on the project-name prompt):
 
 ```bash
-npm exec --yes create-scaffold-hbar@latest -- --template livevnx8/scaffold-hbar-provenance-swarm --solidity-framework hardhat --package-manager npm
+npm exec --yes create-scaffold-hbar@0.4.0 -- my-provenance-swarm -y \
+  --template livevnx8/scaffold-hbar-provenance-swarm \
+  --solidity-framework hardhat --package-manager npm
 ```
+
+`-y` / `--yes` accepts all defaults and skips prompts; a positional `[project-name]` (or
+`--destination <path>`) sets the output directory without asking. Add `--skip-hedera-skills`
+if you do not want the default Hedera Skills install that `--yes` enables.
 
 The default branch is `main`, so the bare `--template owner/repo` form resolves the
 template tarball directly. Pass `--solidity-framework hardhat` and `--package-manager npm`
@@ -45,18 +52,20 @@ registry, or NFT write.
 
 ## What `npm run demo` shows (~30 seconds after install)
 
-Root script (do **not** use a workspace-scoped demo command; the swarm package exposes
-`demo:plan`, and the root wires it):
+Run from the repo root:
 
 ```bash
 npm run demo
 ```
 
+(Do not run it workspace-scoped: the swarm package names its script `demo:plan`;
+the root `demo` script wires it up.)
+
 You should see **GREEN / GREEN / RED**:
 
-1. **GREEN** - valid coffee fixture verifies.
-2. **GREEN** - a second valid lot verifies.
-3. **RED** - a tampered attestation is refused; the receipt truthfully records
+1. **GREEN**: valid coffee fixture verifies.
+2. **GREEN**: a second valid lot verifies.
+3. **RED**: a tampered attestation is refused; the receipt truthfully records
    `needs_review` and the failing worker is named.
 
 The demo also prints the recorded-anchor evidence block (historical HCS seq 2 + NFT serial
@@ -130,12 +139,12 @@ packages/
   swarm/       Deterministic agent core: workers, coordinator, receipt builder,
                double-verifier, fixture, plus Hedera adapters
                (HCS anchoring, HTS certificate minting, mirror re-verification)
-  contracts/   Hardhat: ProvenanceRegistry.sol  -  one-anchor-per-claim registry
+  contracts/   Hardhat: ProvenanceRegistry.sol, the one-anchor-per-claim registry
                with on-chain lookup and hash verification
   nextjs/      Staged UI (claim → verify → receipt → anchor), receipt inspector,
                third-party "check a receipt" tab, and API routes bridging the
                browser to the swarm core and Hedera
-template.json  Scaffold-HBAR manifest — lives at the repo root by design; the CLI reads it from there (it is intentionally not copied into the scaffolded tree)
+template.json  Scaffold-HBAR manifest. Lives at the repo root by design; the CLI reads it from there (it is intentionally not copied into the scaffolded tree)
 AGENTS.md      Agent operating notes for this template
 ```
 
@@ -143,19 +152,19 @@ AGENTS.md      Agent operating notes for this template
 
 Every step is deterministic: no models, no randomness, no network calls in the verify path.
 
-1. **Canonicalize and hash the claim** - `taskHash = sha256(canonical claim JSON)`. Any
+1. **Canonicalize and hash the claim**: `taskHash = sha256(canonical claim JSON)`. Any
    byte-level change to the claim changes this hash.
-2. **Run the three workers** - each recomputes the hash it is responsible for and compares:
+2. **Run the three workers**: each recomputes the hash it is responsible for and compares:
    - *Origin Attestation Verifier* recomputes `sha256(farm|region|harvestDate|statement)`.
    - *Custody Chain Verifier* recomputes each `sha256(prevHolder|holder|receivedAt)` and
      checks the chain links end-to-end.
    - *Document Hash Verifier* checks every document hash is well-formed 64-char hex.
-3. **Build the receipt** - `decisionHash = sha256(taskHash + worker results)`. The verdict
+3. **Build the receipt**: `decisionHash = sha256(taskHash + worker results)`. The verdict
    is `verified` only if every worker passes.
-4. **Double-verify** - two independent passes must agree: Pass A re-derives both hashes from
+4. **Double-verify**: two independent passes must agree: Pass A re-derives both hashes from
    the claim; Pass B checks verdict/worker consistency. A tampered claim is *truthfully
    recorded* as `needs_review`. The receipt never lies about what it saw.
-5. **Anchor gate** - `POST /api/anchor` requires the original claim and re-runs
+5. **Anchor gate**: `POST /api/anchor` requires the original claim and re-runs
    `verifyProvenanceReceipt` (and a fresh `verifyClaim`) **before** any HCS, registry, or
    NFT write. Forged "verified" receipts are rejected with HTTP 403. Receipts that fail
    verification are never minted an NFT; `needs_review` receipts may still be anchored with
@@ -209,15 +218,15 @@ the SDK defaults to ED25519.
 **If anchoring fails**, the API returns a plain reason. Incomplete provenance
 chains are not accepted as finalized receipts:
 
-- **400** — bad request / unusable key / exhibit topic pointed at live path
+- **400**: bad request, unusable key, or exhibit topic pointed at live path
   (`Live topic is set to the frozen Window 9 exhibit topic`,
   `HEDERA_OPERATOR_KEY is not a usable private key for the registry path`).
-- **500** — server misconfig (`Hedera operator not configured`).
-- **409** — duplicate registry anchor (`This claim is already anchored on-chain`).
-- **502** — partial or all-failed HCS / registry / NFT stages (`{ ok: false }` plus
+- **500**: server misconfig (`Hedera operator not configured`).
+- **409**: duplicate registry anchor (`This claim is already anchored on-chain`).
+- **502**: partial or all-failed HCS / registry / NFT stages (`{ ok: false }` plus
   per-stage results). Skipped stages (no registry / non-verified NFT) are not failures.
 - `No certificate token configured` surfaces as a failed NFT stage (502 when the
-  mint was attempted); set `HEDERA_CERTIFICATE_TOKEN_ID` — the anchor path does not
+  mint was attempted); set `HEDERA_CERTIFICATE_TOKEN_ID`. The anchor path does not
   auto-create the NFT collection.
 - Registry path is **ECDSA-only**; set `HEDERA_KEY_TYPE=ecdsa` for HashPack-style keys.
 
@@ -297,7 +306,7 @@ npm run build --workspace @provenance-swarm/nextjs  # production build must comp
   Unset token → mint fails with "No certificate token configured".
 - Auto-created HCS topics have a **null submit key**: anyone who knows the topic id can
   append messages. That is intentional for a public receipt tape in this template, not a
-  private channel — set your own submit key out-of-band if you need append restriction.
+  private channel. Set your own submit key out-of-band if you need append restriction.
 
 ## License
 

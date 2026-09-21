@@ -24,7 +24,7 @@ export default function WorkerResults({ results }: { results: WorkerVerdict[] })
     <div className="card">
       <h2>2 · Swarm verdicts</h2>
       <p className="sub">
-        Each verifier worker checks one dimension of the claim. All logic is deterministic — the same
+        Each verifier worker checks one dimension of the claim. All logic is deterministic, so the same
         claim always produces the same verdicts.
       </p>
       {results.slice(0, visible).map((r) => (

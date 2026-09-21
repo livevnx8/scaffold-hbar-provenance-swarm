@@ -40,7 +40,7 @@ export default function VerifyOnChain() {
         The third-party story: someone hands you a claim ID and a decision hash. Look it up in the{' '}
         <code style={{ fontFamily: 'var(--mono)' }}>ProvenanceRegistry</code> contract. A match proves
         the registry holds that hash for that claim ID (first-writer-wins). That is{' '}
-        <strong>hash-equality only</strong>  -  it does not by itself prove the presenter owns a valid
+        <strong>hash-equality only</strong>: it does not by itself prove the presenter owns a valid
         claim that produces the hash. Post the original claim (advanced) to upgrade to
         claim-reverified mode, which recomputes the decision hash before the registry check.
       </p>
@@ -76,7 +76,7 @@ export default function VerifyOnChain() {
             <div className={`verdict-banner ${result.match ? 'verified' : 'rejected'}`}>
               <span style={{ fontSize: '1.6rem' }}>{result.match ? '✓' : '✕'}</span>
               <div>
-                {result.match ? 'Receipt matches the on-chain anchor' : 'No match  -  this receipt was not anchored as presented'}
+                {result.match ? 'Receipt matches the on-chain anchor' : 'No match: this receipt was not anchored as presented'}
                 {result.match && result.anchoredAt && (
                   <small>
                     anchored {result.anchoredAt} by {result.anchoredBy}

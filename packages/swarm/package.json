@@ -8,7 +8,8 @@
   },
   "author": "livevnx8",
   "dependencies": {
-    "@hashgraph/sdk": "^2.62.0"
+    "@hashgraph/sdk": "^2.62.0",
+    "protobufjs": "^7.5.4"
   },
   "description": "Deterministic provenance-verifier agent swarm with Hedera anchoring (HCS) and certificate minting (HTS).",
   "devDependencies": {

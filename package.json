@@ -6,6 +6,7 @@
   "scripts": {
     "build": "npm run build --workspace=@provenance-swarm/swarm && npm run build --workspace=@provenance-swarm/nextjs",
     "demo": "npm run demo:plan --workspace=@provenance-swarm/swarm",
+    "format": "echo 'format: no formatter configured'",
     "lint": "npm run lint --workspaces --if-present",
     "pretest": "npm run build --workspace=@provenance-swarm/swarm",
     "test": "npm run test --workspaces --if-present"

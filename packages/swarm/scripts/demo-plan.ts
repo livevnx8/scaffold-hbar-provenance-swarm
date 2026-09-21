@@ -36,7 +36,8 @@ function printReceipt(
   console.log(`\nReceipt ${receipt.claimId}: verdict=${receipt.verdict}`);
   console.log(`  taskHash:     ${receipt.taskHash}`);
   console.log(`  decisionHash: ${receipt.decisionHash}`);
-  console.log(`Double-verifier: ${report.verdict} — ${report.summary}`);
+  console.log(`Double-verifier: ${report.verdict}`);
+  console.log(`  ${report.summary}`);
   if (color === 'RED') {
     console.log(
       '(RED) The receipt is authentic; it truthfully records needs_review. ' +

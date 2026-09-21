@@ -67,7 +67,7 @@ export async function POST(req: Request) {
         mode: 'claim-reverified',
         error:
           'Posted decisionHash does not match the decisionHash recomputed from the claim. ' +
-          'Refusing registry lookup — this is not a valid provenance presentation.',
+          'Refusing registry lookup. This is not a valid provenance presentation.',
         recomputedDecisionHash: receipt.decisionHash,
       });
     }

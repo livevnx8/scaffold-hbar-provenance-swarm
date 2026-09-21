@@ -24,7 +24,10 @@
     "hardhat-gas-reporter": "^1.0.0",
     "solidity-coverage": "^0.8.0",
     "ts-node": "^10.9.0",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "@typechain/ethers-v6": "^0.5.0",
+    "@typechain/hardhat": "^9.0.0",
+    "typechain": "^8.3.0"
   },
   "license": "MIT",
   "name": "@provenance-swarm/contracts",

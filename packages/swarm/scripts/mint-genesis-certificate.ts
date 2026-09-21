@@ -28,7 +28,7 @@ function hashscanToken(network: string, tokenId: string): string {
 async function main(): Promise<void> {
   const network = process.env.HEDERA_NETWORK === 'mainnet' ? 'mainnet' : 'testnet';
   if (network === 'mainnet') {
-    throw new Error('Refusing to mint the genesis NFT on mainnet — testnet only.');
+    throw new Error('Refusing to mint the genesis NFT on mainnet. Testnet only.');
   }
 
   // 1 — verify the genesis claim (offline, deterministic)

@@ -85,7 +85,7 @@ export default function AnchorPanel({ receipt, claim }: { receipt: ProvenanceRec
 
       {!config?.hedera && (
         <div className="notice">
-          Hedera is not configured — anchoring is disabled. To enable it, copy{' '}
+          Hedera is not configured, so anchoring is disabled. To enable it, copy{' '}
           <code>packages/nextjs/.env.example</code> to <code>.env</code> and set{' '}
           <code>HEDERA_OPERATOR_ID</code> and <code>HEDERA_OPERATOR_KEY</code> (testnet). Everything
           above this step works fully offline.
@@ -94,8 +94,8 @@ export default function AnchorPanel({ receipt, claim }: { receipt: ProvenanceRec
 
       {!claim && (
         <div className="notice">
-          No claim is attached to this receipt in the UI session. Re-run verification before anchoring —
-          the server refuses anchors without a claim it can re-verify.
+          No claim is attached to this receipt in the UI session. Re-run verification before anchoring.
+          The server refuses anchors without a claim it can re-verify.
         </div>
       )}
       {error && <div className="notice error">{error}</div>}
@@ -114,7 +114,7 @@ export default function AnchorPanel({ receipt, claim }: { receipt: ProvenanceRec
           </div>
           <p className="adesc">
             Submits <code style={{ fontFamily: 'var(--mono)' }}>{receipt.decisionHash.slice(0, 16)}…</code> as
-            a topic message — a public, timestamped proof the receipt existed at this time.
+            a topic message: a public, timestamped proof the receipt existed at this time.
           </p>
           {results?.hcs.ok && (
             <div className="aresult">
@@ -160,7 +160,7 @@ export default function AnchorPanel({ receipt, claim }: { receipt: ProvenanceRec
                       <span className="badge warn">{mirrorResult.error}</span>
                     ) : !mirrorResult.found ? (
                       <span className="badge warn">
-                        not visible yet — mirror nodes lag consensus by a few seconds, retry shortly
+                        not visible yet. Mirror nodes lag consensus by a few seconds; retry shortly
                       </span>
                     ) : mirrorResult.match ? (
                       <span className="badge pass">mirror confirms the anchored decision hash</span>
@@ -193,7 +193,7 @@ export default function AnchorPanel({ receipt, claim }: { receipt: ProvenanceRec
           </p>
           {!config?.registry && (
             <div className="aresult" style={{ color: 'var(--muted)' }}>
-              No registry deployed — run <code style={{ fontFamily: 'var(--mono)' }}>npm run deploy:testnet --workspace=@provenance-swarm/contracts</code> first.
+              No registry deployed. Run <code style={{ fontFamily: 'var(--mono)' }}>npm run deploy:testnet --workspace=@provenance-swarm/contracts</code> first.
             </div>
           )}
           {results?.contract.ok && (
@@ -224,12 +224,12 @@ export default function AnchorPanel({ receipt, claim }: { receipt: ProvenanceRec
             )}
           </div>
           <p className="adesc">
-            Mints a non-fungible provenance certificate carrying the decision hash — only for claims
+            Mints a non-fungible provenance certificate carrying the decision hash, but only for claims
             the swarm verified.
           </p>
           {receipt.verdict !== 'verified' && (
             <div className="aresult" style={{ color: 'var(--muted)' }}>
-              Only verified claims mint certificates — this receipt is “{receipt.verdict}”.
+              Only verified claims mint certificates. This receipt is “{receipt.verdict}”.
             </div>
           )}
           {results?.nft.ok && (
