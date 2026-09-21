@@ -13,10 +13,28 @@ verifier.
 Scaffold it in one command:
 
 ```bash
-npm create scaffold-hbar@latest -- --template livevnx8/scaffold-hbar-provenance-swarm
+npm create scaffold-hbar@latest -- --template livevnx8/scaffold-hbar-provenance-swarm#master --package-manager npm --solidity-framework hardhat
 ```
 
+Use `#master` because this repo's default branch is `master` (not `main`); without it,
+`create-scaffold-hbar` requests a `main` tarball and 404s. Pass `--package-manager npm`
+and `--solidity-framework hardhat` so defaults do not demand missing Yarn or attempt
+Foundry validation.
+
 ## Why it matters
+
+### What this does not prove
+
+- **Not real-world truth.** A self-consistent fabricated claim (hashes that recompute and
+  match the supplied fields) gets a full GREEN. The system proves internal consistency of
+  the fields you supply, not signer identity, source authentication, document retrieval, or
+  custody attestation from the outside world.
+- **Mirror confirmation is byte equality.** `verifyHcsAnchorOnMirror` checks that the HCS
+  payload's `decisionHash` equals the caller-provided expected hash. It does not
+  independently reconstruct the claim or recompute provenance.
+- **Document hashes are shape-checked only.** The Document Hash Verifier accepts lowercase
+  64-char hex strings. It never obtains or hashes document bytes, so it does not authenticate
+  document contents.
 
 Supply-chain claims are easy to forge and hard to re-check. This template turns a product
 claim into a tamper-evident receipt: the same claim always yields the same worker verdicts,
@@ -170,7 +188,7 @@ Copy `packages/nextjs/.env.example` to `packages/nextjs/.env`:
 | `HEDERA_TEMPLATE_TOPIC_ID` | live HCS anchors | auto-created if absent; **must not** be `0.0.10569989` |
 | `HEDERA_PROVENANCE_TOPIC_ID` | legacy alias | still honoured if `HEDERA_TEMPLATE_TOPIC_ID` is unset |
 | `HEDERA_EXHIBIT_TOPIC_ID` | docs / UI only | defaults to frozen Window 9 topic `0.0.10569989` (read-only) |
-| `HEDERA_CERTIFICATE_TOKEN_ID` | NFT mint | auto-created if absent |
+| `HEDERA_CERTIFICATE_TOKEN_ID` | NFT mint | **must be set** (or created out-of-band / via `packages/swarm/scripts/mint-vera-genesis.ts`); **not** auto-created by `/api/anchor`. If unset, `mintCertificate` fails with "No certificate token configured" and the NFT step reports that error |
 | `HEDERA_REGISTRY_ADDRESS` | contract anchor + receipt checks | from `deploy:testnet` |
 | `HEDERA_RPC_URL` | contract calls | defaults to Hashio testnet |
 
@@ -229,6 +247,16 @@ npm run build --workspace @provenance-swarm/nextjs  # production build must comp
   cryptography.
 - Topic `0.0.10569989` is the frozen Window 9 exhibit. Template live anchors use
   `HEDERA_TEMPLATE_TOPIC_ID`.
+- Self-consistent fabricated claims get full GREEN: workers prove hash recomputes match the
+  supplied fields, not real-world truth (no signer identity, source auth, document retrieval,
+  or external custody attestation).
+- Mirror confirmation (`verifyHcsAnchorOnMirror`) is byte equality of the HCS payload's
+  `decisionHash` with the caller-provided expected hash, not independent claim reconstruction.
+- `DocumentHashWorker` validates hash *shape* (lowercase 64-char hex) only; it never obtains
+  or hashes document bytes.
+- `HEDERA_CERTIFICATE_TOKEN_ID` is required for NFT mint. Unlike the HCS topic (auto-created
+  via `ensureTopic` when absent), `/api/anchor` does not call `createCertificateToken()`.
+  Unset token → mint fails with "No certificate token configured".
 
 ## License
 

@@ -123,7 +123,7 @@ export default function Home() {
         <div>
           <strong>For developers.</strong> Scaffold your own from this template:
         </div>
-        <code>npm create scaffold-hbar@latest -- --template livevnx8/scaffold-hbar-provenance-swarm</code>
+        <code>npm create scaffold-hbar@latest -- --template livevnx8/scaffold-hbar-provenance-swarm#master --package-manager npm --solidity-framework hardhat</code>
         <div style={{ marginTop: '0.75rem' }}>
           Offline verification runs with no Hedera account. Anchoring, the registry contract, and
           certificate mints need testnet credentials in <code>packages/nextjs/.env</code>.
