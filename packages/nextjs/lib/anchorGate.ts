@@ -1,8 +1,9 @@
 import {
   verifyProvenanceReceipt,
   ProvenanceClient,
-} from '@provenance-swarm/swarm';
-import type { ProvenanceReceipt, ProvenanceClaim } from '@provenance-swarm/swarm';
+  type ProvenanceReceipt,
+  type ProvenanceClaim,
+} from '../../swarm/src/index.ts';
 
 /**
  * Server-side gate: refuse forged "verified" receipts before any HCS /

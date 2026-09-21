@@ -95,12 +95,12 @@ export async function POST(req: Request) {
     );
   }
 
-  // N7: malformed-but-present operator keys must not 500.
+  // Malformed-but-present operator keys must not 500.
   let anchor: HederaAnchor;
   try {
     const maybe = HederaAnchor.fromEnv();
     if (!maybe) {
-      // N31: server misconfig → 500
+      // Server misconfig → 500
       return NextResponse.json(
         {
           error:
@@ -155,9 +155,9 @@ export async function POST(req: Request) {
     try {
       const rpcUrl = process.env.HEDERA_RPC_URL || 'https://testnet.hashio.io/api';
       const provider = new ethers.JsonRpcProvider(rpcUrl);
-      // N4: registry path is ECDSA-only (ethers Wallet). Documented in README;
-      // do not change signer derivation in this pass — still normalize via
-      // parseOperatorKey so DER / 0x / raw hex parse, but ethers expects secp256k1.
+      // Registry path is ECDSA-only (ethers Wallet). Documented in README;
+      // still normalize via parseOperatorKey so DER / 0x / raw hex parse, but
+      // ethers expects secp256k1.
       const keyType =
         process.env.HEDERA_KEY_TYPE === 'ecdsa'
           ? 'ecdsa'
@@ -178,7 +178,7 @@ export async function POST(req: Request) {
       const registry = new ethers.Contract(registryAddress, REGISTRY_ABI, wallet);
       const tx = await registry.anchorReceipt(receipt.claimId, toBytes32(receipt.decisionHash));
       const mined = await tx.wait();
-      // N5: reverted txs must not be reported as success.
+      // Reverted txs must not be reported as success.
       if (mined && typeof mined.status === 'number' && mined.status !== 1) {
         out.contract = {
           ok: false,
@@ -224,7 +224,7 @@ export async function POST(req: Request) {
     /* ignore */
   }
 
-  // N31: duplicates → 409
+  // Duplicates → 409
   if (out.contract.duplicate) {
     return NextResponse.json(
       { ok: false, error: out.contract.error, ...out },
@@ -232,7 +232,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // N2: all-failed or partial-anchor → 502 with top-level { ok: false }
+  // All-failed or partial-anchor → 502 with top-level { ok: false }.
   // Skipped stages (no-registry / verdict-not-verified) are not failures.
   const hcsFailed = !out.hcs.ok;
   const contractFailed = !out.contract.ok && !out.contract.skipped;

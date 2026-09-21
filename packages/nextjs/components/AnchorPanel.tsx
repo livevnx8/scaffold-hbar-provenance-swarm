@@ -35,7 +35,7 @@ export default function AnchorPanel({ receipt, claim }: { receipt: ProvenanceRec
       });
       const data = await res.json();
       if (!res.ok) {
-        // N2: 502 partial/all-failed still carries per-stage results.
+        // 502 partial/all-failed still carries per-stage results.
         if (data && (data.hcs || data.contract || data.nft)) {
           setResults(data);
         }

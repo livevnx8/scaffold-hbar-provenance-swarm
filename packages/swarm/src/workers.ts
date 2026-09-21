@@ -53,7 +53,7 @@ export class OriginAttestationWorker implements ProvenanceWorker {
     }
 
     const o = claim.origin;
-    // N15: missing origin must fail cleanly — never dereference null/undefined.
+    // Missing origin must fail cleanly — never dereference null/undefined.
     if (!o) {
       return verdict(this, false, 0.1, ['origin attestation is missing']);
     }

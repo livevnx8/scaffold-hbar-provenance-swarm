@@ -297,6 +297,9 @@ npm run build --workspace @provenance-swarm/nextjs  # production build must comp
 - `HEDERA_CERTIFICATE_TOKEN_ID` is required for NFT mint. Unlike the HCS topic (auto-created
   via `ensureTopic` when absent), `/api/anchor` does not call `createCertificateToken()`.
   Unset token → mint fails with "No certificate token configured".
+- Auto-created HCS topics have a **null submit key**: anyone who knows the topic id can
+  append messages. That is intentional for a public receipt tape in this template, not a
+  private channel — set your own submit key out-of-band if you need append restriction.
 
 ## License
 
