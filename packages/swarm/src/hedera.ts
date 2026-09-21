@@ -171,7 +171,8 @@ export class HederaAnchor {
   /**
    * Mint a provenance-certificate NFT carrying the receipt's decision hash.
    * Pass custom `metadata` bytes (e.g. a HIP-412 JSON document) for art NFTs;
-   * defaults to the compact claim/decision/verdict JSON.
+   * defaults to the compact `<claimId>/<decisionHash>` pointer (HTS NFT metadata
+   * is capped at 100 bytes — the full claim/decision/verdict JSON exceeds it).
    */
   async mintCertificate(
     receipt: ProvenanceReceipt,
@@ -183,16 +184,16 @@ export class HederaAnchor {
         'No certificate token configured — run createCertificateToken() once, then set HEDERA_CERTIFICATE_TOKEN_ID',
       );
     }
-    const metadata =
-      opts?.metadata ??
-      Buffer.from(
-        JSON.stringify({
-          claimId: receipt.claimId,
-          decisionHash: receipt.decisionHash,
-          verdict: receipt.verdict,
-        }),
-        'utf8',
-      );
+    let metadata = opts?.metadata;
+    if (!metadata) {
+      const compact = `${receipt.claimId}/${receipt.decisionHash}`;
+      if (Buffer.byteLength(compact, 'utf8') > 100) {
+        // Prefer decision hash alone when claimId is long; always ≤ 64 bytes.
+        metadata = Buffer.from(receipt.decisionHash, 'utf8');
+      } else {
+        metadata = Buffer.from(compact, 'utf8');
+      }
+    }
     const tx = await new TokenMintTransaction()
       .setTokenId(tokenId)
       .setMetadata([metadata])
