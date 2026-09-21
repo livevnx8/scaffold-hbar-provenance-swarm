@@ -180,6 +180,20 @@ export default function ClaimForm({
         <button className="btn ghost" onClick={loadFixture} disabled={loadingFixture || busy}>
           {loadingFixture ? 'Loading…' : 'Load coffee fixture'}
         </button>
+        <button
+          className="btn ghost"
+          onClick={() =>
+            setClaim((c) => ({
+              ...c,
+              claimId: c.claimId ? `${c.claimId}-tampered` : 'claim-tampered',
+              origin: { ...c.origin, attestationHash: 'f'.repeat(64) },
+            }))
+          }
+          disabled={busy || !claim.origin.attestationHash}
+          title="Overwrite the origin attestation hash so the next verification must refuse"
+        >
+          Tamper attestation
+        </button>
         <button className="btn" onClick={() => onVerify(claim)} disabled={busy}>
           {busy ? (
             <>
@@ -190,6 +204,11 @@ export default function ClaimForm({
           )}
         </button>
       </div>
+      <p className="sub" style={{ marginTop: '0.75rem' }}>
+        Tip: load the fixture and verify (GREEN), then click <strong>Tamper attestation</strong> and
+        verify again (RED). The receipt should truthfully record a refused / needs-review verdict and
+        explain which worker failed — that refusal is the point.
+      </p>
     </div>
   );
 }

@@ -47,11 +47,17 @@ export default function ReceiptCard({
           <small>
             {report.summary}
           </small>
+          {receipt.verdict === 'needs_review' && report.verdict === 'accepted' && (
+            <small style={{ display: 'block', marginTop: '0.35rem' }}>
+              Double-verifier &quot;accepted&quot; here means the receipt is authentic and
+              truthfully records <code>needs_review</code>  -  not that the claim itself is verified.
+            </small>
+          )}
         </div>
       </div>
 
-      <Hash label="taskHash — sha256(canonical claim)" value={receipt.taskHash} />
-      <Hash label="decisionHash — sha256(taskHash + worker results)" value={receipt.decisionHash} />
+      <Hash label="taskHash  -  sha256(canonical claim)" value={receipt.taskHash} />
+      <Hash label="decisionHash  -  sha256(taskHash + worker results)" value={receipt.decisionHash} />
 
       <div className="kv" style={{ marginTop: '0.75rem' }}>
         <span className="k">Claim ID</span>
@@ -65,7 +71,7 @@ export default function ReceiptCard({
       <div className="passgrid">
         <div className="passbox">
           <h3>
-            Pass A — hash integrity{' '}
+            Pass A  -  hash integrity{' '}
             <span className={`badge ${PASS_A.every((n) => report.checks.find((c) => c.name === n)?.ok) ? 'pass' : 'fail'}`}>
               {PASS_A.every((n) => report.checks.find((c) => c.name === n)?.ok) ? 'ok' : 'failed'}
             </span>
@@ -74,15 +80,14 @@ export default function ReceiptCard({
             <div className="checkline" key={c!.name}>
               <span className={c!.ok ? 'ok' : 'no'}>{c!.ok ? '✓' : '✕'}</span>
               <span>
-                <strong>{c!.name}</strong> — {c!.detail.slice(0, 72)}
-                {c!.detail.length > 72 ? '…' : ''}
+                <strong>{c!.name}</strong>  -  {c!.detail}
               </span>
             </div>
           ))}
         </div>
         <div className="passbox">
           <h3>
-            Pass B — policy{' '}
+            Pass B  -  policy{' '}
             <span className={`badge ${PASS_B.every((n) => report.checks.find((c) => c.name === n)?.ok) ? 'pass' : 'fail'}`}>
               {PASS_B.every((n) => report.checks.find((c) => c.name === n)?.ok) ? 'ok' : 'failed'}
             </span>
@@ -91,8 +96,7 @@ export default function ReceiptCard({
             <div className="checkline" key={c!.name}>
               <span className={c!.ok ? 'ok' : 'no'}>{c!.ok ? '✓' : '✕'}</span>
               <span>
-                <strong>{c!.name}</strong> — {c!.detail.slice(0, 72)}
-                {c!.detail.length > 72 ? '…' : ''}
+                <strong>{c!.name}</strong>  -  {c!.detail}
               </span>
             </div>
           ))}
