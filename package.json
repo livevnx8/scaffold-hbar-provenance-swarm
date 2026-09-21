@@ -7,6 +7,7 @@
     "build": "npm run build --workspace=@provenance-swarm/swarm && npm run build --workspace=@provenance-swarm/nextjs",
     "demo": "npm run demo:plan --workspace=@provenance-swarm/swarm",
     "lint": "npm run lint --workspaces --if-present",
+    "pretest": "npm run build --workspace=@provenance-swarm/swarm",
     "test": "npm run test --workspaces --if-present"
   },
   "version": "0.1.0",
