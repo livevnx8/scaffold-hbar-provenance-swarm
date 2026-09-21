@@ -28,7 +28,7 @@ export type { DoubleVerifierVerdict, DoubleVerifierReport } from './verifier.js'
 export { ProvenanceClient } from './sdk.js';
 export type { ProvenanceVerification } from './sdk.js';
 export { fixtureClaim } from './fixture.js';
-export { HederaAnchor, configFromEnv, parseOperatorKey } from './hedera.js';
+export { HederaAnchor, configFromEnv, parseOperatorKey, FROZEN_EXHIBIT_TOPIC_ID } from './hedera.js';
 export { veraGenesisClaim } from './vera-genesis.js';
 export type {
   HederaAnchorConfig,
