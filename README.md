@@ -204,8 +204,8 @@ before you anchor (step 3). ECDSA operator keys (e.g. HashPack-style accounts)
 need `HEDERA_KEY_TYPE=ecdsa` in `packages/nextjs/.env`; raw 32-byte keys cannot
 be told apart by inspection and the SDK defaults to ED25519.
 
-**If anchoring fails**, the API answers 400 with a plain reason, never a
-half-written receipt:
+**If anchoring fails**, the API answers 400 with a plain reason. Incomplete
+provenance chains are not accepted as finalized receipts:
 
 - `Hedera operator not configured` — `HEDERA_OPERATOR_ID` / `HEDERA_OPERATOR_KEY`
   missing from `packages/nextjs/.env`.
