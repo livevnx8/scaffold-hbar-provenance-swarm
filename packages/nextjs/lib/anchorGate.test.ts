@@ -4,7 +4,7 @@
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { fixtureClaim, ProvenanceClient } from '../../swarm/dist/index.js';
+import { fixtureClaim, ProvenanceClient } from '../../swarm/src/index.ts';
 import { gateReceipt } from './anchorGate.js';
 
 describe('gateReceipt (POST /api/anchor forge gate)', () => {

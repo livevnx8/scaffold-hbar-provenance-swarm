@@ -2,11 +2,14 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   const hedera = Boolean(process.env.HEDERA_OPERATOR_ID && process.env.HEDERA_OPERATOR_KEY);
+  const topic = Boolean(
+    process.env.HEDERA_TEMPLATE_TOPIC_ID?.trim() || process.env.HEDERA_PROVENANCE_TOPIC_ID?.trim(),
+  );
   return NextResponse.json({
     hedera,
-    topic: Boolean(process.env.HEDERA_PROVENANCE_TOPIC_ID),
-    certificateToken: Boolean(process.env.HEDERA_CERTIFICATE_TOKEN_ID),
-    registry: Boolean(process.env.HEDERA_REGISTRY_ADDRESS),
+    topic,
+    certificateToken: Boolean(process.env.HEDERA_CERTIFICATE_TOKEN_ID?.trim()),
+    registry: Boolean(process.env.HEDERA_REGISTRY_ADDRESS?.trim()),
     network: process.env.HEDERA_NETWORK === 'mainnet' ? 'mainnet' : 'testnet',
   });
 }

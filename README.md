@@ -82,7 +82,7 @@ npm run dev --workspace @provenance-swarm/nextjs    # http://localhost:3000
 ```
 
 The UI runs fully offline until you add Hedera credentials. The header badge reads
-"Offline demo mode" vs "Hedera testnet connected", and the anchor panel explains exactly
+"Offline demo mode" vs "Hedera testnet configured", and the anchor panel explains exactly
 what to configure. Click **Load coffee fixture** then **Run verification** for the happy
 path; use **Tamper attestation** for the refused path.
 
@@ -137,7 +137,7 @@ packages/
   nextjs/      Staged UI (claim → verify → receipt → anchor), receipt inspector,
                third-party "check a receipt" tab, and API routes bridging the
                browser to the swarm core and Hedera
-template.json  Scaffold-HBAR manifest (capabilities declaration)
+template.json  Upstream Scaffold-HBAR manifest, consumed by the CLI (not copied into the scaffolded tree)
 AGENTS.md      Agent operating notes for this template
 ```
 
@@ -159,7 +159,9 @@ Every step is deterministic: no models, no randomness, no network calls in the v
    recorded* as `needs_review`. The receipt never lies about what it saw.
 5. **Anchor gate** - `POST /api/anchor` requires the original claim and re-runs
    `verifyProvenanceReceipt` (and a fresh `verifyClaim`) **before** any HCS, registry, or
-   NFT write. Forged "verified" receipts are rejected with HTTP 403.
+   NFT write. Forged "verified" receipts are rejected with HTTP 403. Receipts that fail
+   verification are never minted an NFT; `needs_review` receipts may still be anchored with
+   their verdict truthfully recorded.
 
 ## Check-a-receipt honesty
 
@@ -187,10 +189,11 @@ Copy `packages/nextjs/.env.example` to `packages/nextjs/.env`:
 | Variable | Required for | Notes |
 |---|---|---|
 | `HEDERA_OPERATOR_ID` / `HEDERA_OPERATOR_KEY` | any on-chain step | Testnet credentials only; never commit |
+| `HEDERA_KEY_TYPE` | HCS + registry key parsing | `ecdsa` / `ed25519` / empty (auto). **Registry path is ECDSA-only** (ethers `Wallet`); ED25519 keys can still drive HCS/HTS via the SDK but will not sign registry txs. |
 | `HEDERA_NETWORK` | anchoring | `testnet` (default) or `mainnet` |
 | `HEDERA_TEMPLATE_TOPIC_ID` | live HCS anchors | auto-created if absent; **must not** be `0.0.10569989` |
 | `HEDERA_PROVENANCE_TOPIC_ID` | legacy alias | still honoured if `HEDERA_TEMPLATE_TOPIC_ID` is unset |
-| `HEDERA_EXHIBIT_TOPIC_ID` | docs / UI only | defaults to frozen Window 9 topic `0.0.10569989` (read-only) |
+| `HEDERA_EXHIBIT_TOPIC_ID` | docs only | defaults to frozen Window 9 topic `0.0.10569989` (read-only) |
 | `HEDERA_CERTIFICATE_TOKEN_ID` | NFT mint | **must be set** (or created out-of-band / via `packages/swarm/scripts/mint-vera-genesis.ts`); **not** auto-created by `/api/anchor`. If unset, `mintCertificate` fails with "No certificate token configured" and the NFT step reports that error |
 | `HEDERA_REGISTRY_ADDRESS` | contract anchor + receipt checks | from `deploy:testnet` |
 | `HEDERA_RPC_URL` | contract calls | defaults to Hashio testnet |
@@ -201,21 +204,24 @@ Copy `packages/nextjs/.env.example` to `packages/nextjs/.env`:
 [faucet](https://portal.hedera.com) (a few testnet HBAR covers the topic
 create, registry deploy, HCS anchors, and NFT mint), and the registry deployed
 before you anchor (step 3). ECDSA operator keys (e.g. HashPack-style accounts)
-need `HEDERA_KEY_TYPE=ecdsa` in `packages/nextjs/.env`; raw 32-byte keys cannot
-be told apart by inspection and the SDK defaults to ED25519.
+need `HEDERA_KEY_TYPE=ecdsa` in `packages/nextjs/.env` (the registry path is
+ECDSA-only via ethers); raw 32-byte keys cannot be told apart by inspection and
+the SDK defaults to ED25519.
 
-**If anchoring fails**, the API answers 400 with a plain reason. Incomplete
-provenance chains are not accepted as finalized receipts:
+**If anchoring fails**, the API returns a plain reason. Incomplete provenance
+chains are not accepted as finalized receipts:
 
-- `Hedera operator not configured` — `HEDERA_OPERATOR_ID` / `HEDERA_OPERATOR_KEY`
-  missing from `packages/nextjs/.env`.
-- `Live topic is set to the frozen Window 9 exhibit topic` — point
-  `HEDERA_TEMPLATE_TOPIC_ID` at your own topic (or leave it empty to
-  auto-create one). The exhibit topic `0.0.10569989` is read-only.
-- `No certificate token configured` — set `HEDERA_CERTIFICATE_TOKEN_ID`; the
-  anchor path does not auto-create the NFT collection.
-- `HEDERA_OPERATOR_KEY is not a usable private key for the registry path` —
-  the key does not parse for the configured `HEDERA_KEY_TYPE`.
+- **400** — bad request / unusable key / exhibit topic pointed at live path
+  (`Live topic is set to the frozen Window 9 exhibit topic`,
+  `HEDERA_OPERATOR_KEY is not a usable private key for the registry path`).
+- **500** — server misconfig (`Hedera operator not configured`).
+- **409** — duplicate registry anchor (`This claim is already anchored on-chain`).
+- **502** — partial or all-failed HCS / registry / NFT stages (`{ ok: false }` plus
+  per-stage results). Skipped stages (no registry / non-verified NFT) are not failures.
+- `No certificate token configured` surfaces as a failed NFT stage (502 when the
+  mint was attempted); set `HEDERA_CERTIFICATE_TOKEN_ID` — the anchor path does not
+  auto-create the NFT collection.
+- Registry path is **ECDSA-only**; set `HEDERA_KEY_TYPE=ecdsa` for HashPack-style keys.
 
 1. Create a testnet account via the [Hedera Portal](https://portal.hedera.com) and fund it from the faucet.
 2. Copy `packages/nextjs/.env.example` to `packages/nextjs/.env` and add your operator credentials.
@@ -271,9 +277,8 @@ npm run build --workspace @provenance-swarm/nextjs  # production build must comp
 
 - The verifier workers are **deterministic scoring logic**, not AI models. The "agent swarm"
   framing refers to the worker/coordinator/registry architecture with verifiable receipts.
-- Live Hedera behavior is demo-grade until the registry deployment and the fresh
-  published-template run above are recorded with real transaction hashes. Everything else
-  in this repo is verified by the offline test suites, which need no credentials.
+- Live Hedera behavior was validated on testnet (see the E2E evidence table above). Offline
+  paths remain covered by the credential-free unit suites.
 - The double-verifier is two independent verification *passes* over the same receipt, not
   two independent external systems. When it reports "accepted" on a `needs_review` receipt,
   that means the receipt is authentic and truthfully records `needs_review`, not that the

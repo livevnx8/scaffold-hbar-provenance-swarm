@@ -17,6 +17,8 @@ export interface ChainConfig {
 }
 
 export interface AnchorResults {
+  ok?: boolean;
+  error?: string;
   hcs: {
     ok: boolean;
     topicId?: string;

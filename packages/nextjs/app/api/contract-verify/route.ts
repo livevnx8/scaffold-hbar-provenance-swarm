@@ -108,7 +108,12 @@ export async function POST(req: Request) {
     try {
       match = await registry.verifyReceipt(claimId, clean);
     } catch {
-      return NextResponse.json({ match: false, mode, claimChecks });
+      return NextResponse.json({
+        match: false,
+        mode,
+        claimChecks,
+        error: 'Registry lookup failed',
+      });
     }
     if (!match) return NextResponse.json({ match: false, mode, claimChecks });
 

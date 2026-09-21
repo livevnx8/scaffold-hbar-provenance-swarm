@@ -57,8 +57,11 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): HederaAncho
     operatorId,
     operatorKey,
     network: env.HEDERA_NETWORK === 'mainnet' ? 'mainnet' : 'testnet',
-    topicId: env.HEDERA_TEMPLATE_TOPIC_ID || env.HEDERA_PROVENANCE_TOPIC_ID,
-    certificateTokenId: env.HEDERA_CERTIFICATE_TOKEN_ID,
+    topicId:
+      env.HEDERA_TEMPLATE_TOPIC_ID?.trim() ||
+      env.HEDERA_PROVENANCE_TOPIC_ID?.trim() ||
+      undefined,
+    certificateTokenId: env.HEDERA_CERTIFICATE_TOKEN_ID?.trim() || undefined,
     keyType,
   };
 }

@@ -40,8 +40,10 @@ export function gateReceipt(
     };
   }
 
-  // Defence in depth: re-run the swarm and require an exact match so a
-  // self-consistent but fabricated receipt/claim pair cannot sail through.
+  // Defence in depth: re-run the swarm and require an exact match so
+  // a hand-crafted receipt that was never produced by the pipeline for the posted
+  // claim cannot sail through; self-consistent fabricated claims still pass by
+  // design (see Honest boundaries).
   const { receipt: recomputed } = new ProvenanceClient().verifyClaim(claim);
   if (
     recomputed.taskHash !== receipt.taskHash ||

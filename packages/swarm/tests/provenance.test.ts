@@ -76,7 +76,7 @@ describe('OriginAttestationWorker', () => {
     const result = new OriginAttestationWorker().verify(validClaim());
     expect(result.passed).toBe(true);
     expect(result.confidence).toBeGreaterThan(0.5);
-    expect(result.findings.join(' ')).toContain('attestation hash matches');
+    expect(result.findings.join(' ')).toContain('attestation hash recomputes');
   });
 
   it('fails when the attestation hash is tampered', () => {
@@ -85,6 +85,24 @@ describe('OriginAttestationWorker', () => {
     const result = new OriginAttestationWorker().verify(claim);
     expect(result.passed).toBe(false);
     expect(result.findings.join(' ')).toContain('mismatch');
+  });
+
+  it('fails cleanly when origin is missing (no crash)', () => {
+    const claim = { ...validClaim(), origin: undefined as unknown as ProvenanceClaim['origin'] };
+    const result = new OriginAttestationWorker().verify(claim);
+    expect(result.passed).toBe(false);
+    expect(result.findings.join(' ')).toContain('origin attestation is missing');
+  });
+
+  it('rejects impossible calendar dates like 2026-99-99', () => {
+    const claim = validClaim();
+    claim.origin.harvestDate = '2026-99-99';
+    claim.origin.attestationHash = sha256(
+      `${claim.origin.farm}|${claim.origin.region}|${claim.origin.harvestDate}|${claim.origin.statement}`,
+    );
+    const result = new OriginAttestationWorker().verify(claim);
+    expect(result.passed).toBe(false);
+    expect(result.findings.join(' ')).toContain('calendar date');
   });
 });
 

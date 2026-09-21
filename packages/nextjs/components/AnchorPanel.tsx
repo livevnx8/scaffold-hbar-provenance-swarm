@@ -35,6 +35,10 @@ export default function AnchorPanel({ receipt, claim }: { receipt: ProvenanceRec
       });
       const data = await res.json();
       if (!res.ok) {
+        // N2: 502 partial/all-failed still carries per-stage results.
+        if (data && (data.hcs || data.contract || data.nft)) {
+          setResults(data);
+        }
         setError(data.error || 'Anchoring failed');
       } else {
         setResults(data);
@@ -131,7 +135,16 @@ export default function AnchorPanel({ receipt, claim }: { receipt: ProvenanceRec
                   className="btn ghost"
                   style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem' }}
                   onClick={verifyOnMirror}
-                  disabled={mirrorBusy}
+                  disabled={
+                    mirrorBusy ||
+                    !results.hcs.sequenceNumber ||
+                    results.hcs.sequenceNumber === ''
+                  }
+                  title={
+                    !results.hcs.sequenceNumber || results.hcs.sequenceNumber === ''
+                      ? 'No HCS sequence number to verify'
+                      : undefined
+                  }
                 >
                   {mirrorBusy ? (
                     <>

@@ -40,11 +40,25 @@ export class OriginAttestationWorker implements ProvenanceWorker {
 
   verify(claim: ProvenanceClaim): WorkerVerdict {
     const findings: string[] = [];
-    const o = claim.origin;
     let passed = true;
     let confidence = 0.5;
 
-    if (!o || !o.farm || !o.region || !o.harvestDate || !o.statement) {
+    // Claim identity fields (inspected so the "three specialists" framing matches
+    // what is actually checked — not left as free-form decoration).
+    if (!claim.claimId?.trim() || !claim.product?.trim() || !claim.lot?.trim()) {
+      passed = false;
+      findings.push('claimId, product, and lot are required non-empty fields');
+    } else {
+      confidence += 0.05;
+    }
+
+    const o = claim.origin;
+    // N15: missing origin must fail cleanly — never dereference null/undefined.
+    if (!o) {
+      return verdict(this, false, 0.1, ['origin attestation is missing']);
+    }
+
+    if (!o.farm || !o.region || !o.harvestDate || !o.statement) {
       passed = false;
       findings.push('origin attestation is missing required fields');
     } else {
@@ -59,12 +73,26 @@ export class OriginAttestationWorker implements ProvenanceWorker {
       );
     } else {
       confidence += 0.25;
-      findings.push('attestation hash matches the signed origin payload');
+      findings.push('attestation hash recomputes from the supplied origin fields');
     }
 
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(o.harvestDate ?? '')) {
+    // Real calendar date — reject 2026-99-99 and other regex-only impostors.
+    const dateOk = (() => {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(o.harvestDate ?? '');
+      if (!m) return false;
+      const y = Number(m[1]);
+      const mo = Number(m[2]);
+      const d = Number(m[3]);
+      const dt = new Date(Date.UTC(y, mo - 1, d));
+      return (
+        dt.getUTCFullYear() === y &&
+        dt.getUTCMonth() === mo - 1 &&
+        dt.getUTCDate() === d
+      );
+    })();
+    if (!dateOk) {
       passed = false;
-      findings.push('harvestDate is not an ISO YYYY-MM-DD date');
+      findings.push('harvestDate is not a real ISO YYYY-MM-DD calendar date');
     }
 
     return verdict(this, passed, confidence, findings);

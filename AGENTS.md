@@ -11,7 +11,7 @@ anchored on Hedera. Forkable via `npm exec --yes create-scaffold-hbar@latest -- 
   `tests/` holds the jest suite; `scripts/demo-plan.ts` runs the offline demo.
 - `packages/contracts/` — Hardhat workspace. `contracts/ProvenanceRegistry.sol` is the on-chain anchor.
 - `packages/nextjs/` — Next.js App Router frontend. Talks to the swarm through API routes.
-- `template.json` — the scaffold-hbar manifest. Keep `capabilities` in sync with what actually exists.
+- `template.json` — upstream Scaffold-HBAR manifest consumed by the CLI (not present in the scaffolded tree). Keep `capabilities` in sync with what actually exists in this repo.
 
 ## Commands
 

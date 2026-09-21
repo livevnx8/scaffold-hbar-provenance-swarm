@@ -54,15 +54,15 @@ export default function Home() {
     }
   }
 
-  // Claim(0) → Verify(1, busy) → Receipt(2) → Anchor(3 shown as next once receipt exists)
-  const stage = busy ? 1 : !receipt ? 0 : 2;
+  // Claim(0) → Verify(1, busy) → Receipt(2) → Anchor(3 current once receipt exists)
+  const stage = busy ? 1 : !receipt ? 0 : 3;
 
   return (
     <div className="container">
       <header className="hero">
         <div className={`netbadge ${config?.hedera ? 'live' : ''}`}>
           <span className="dot" />
-          {config ? (config.hedera ? `Hedera ${config.network} connected` : 'Offline demo mode') : '…'}
+          {config ? (config.hedera ? `Hedera ${config.network} configured` : 'Offline demo mode') : '…'}
         </div>
         <h1>
           <span className="brand">Provenance</span> Swarm
@@ -71,7 +71,7 @@ export default function Home() {
           <strong>Why it matters.</strong> Supply-chain claims are easy to forge and hard to re-check.
           This template turns a product claim into a tamper-evident receipt: a deterministic swarm
           verifies origin, custody, and documents, binds the verdicts into hashed receipts, and can
-          anchor them on Hedera so a stranger can replay the proof without trusting the original verifier.
+          anchor them on Hedera so a stranger can check a presented receipt against the chain without trusting the original verifier.
         </p>
         <p className="sub" style={{ marginTop: '0.75rem' }}>
           Offline path: load the coffee fixture, run verification (GREEN), then use{' '}
@@ -123,7 +123,7 @@ export default function Home() {
         <div>
           <strong>For developers.</strong> Scaffold your own from this template:
         </div>
-        <code>npm create scaffold-hbar@latest -- --template livevnx8/scaffold-hbar-provenance-swarm --package-manager npm --solidity-framework hardhat</code>
+        <code>npm exec --yes create-scaffold-hbar@latest -- --template livevnx8/scaffold-hbar-provenance-swarm --solidity-framework hardhat --package-manager npm</code>
         <div style={{ marginTop: '0.75rem' }}>
           Offline verification runs with no Hedera account. Anchoring, the registry contract, and
           certificate mints need testnet credentials in <code>packages/nextjs/.env</code>.
