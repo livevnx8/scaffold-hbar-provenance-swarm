@@ -1,11 +1,14 @@
-# Provenance Swarm — a Scaffold-HBAR template
+# Provenance Swarm: a Scaffold-HBAR template
+
+> Node **>= 20.18.3**. First `npm install` on a clean machine can take **~9 minutes**.
 
 Verifiable supply-chain provenance on Hedera. A deterministic agent swarm checks a product's
-**origin attestation**, **custody chain**, and **document hashes**; the coordinator binds the verdicts
-into a tamper-evident receipt; the receipt is anchored on Hedera (HCS topic + registry contract) and a
-provenance-certificate NFT (HTS) is minted for verified claims. A Next.js frontend walks anyone through
-claim → verification → receipt → anchoring, and a third party can re-verify any receipt against the
-chain or the mirror node without trusting the verifier.
+origin attestation, custody chain, and document hashes; the coordinator binds the verdicts
+into a tamper-evident receipt; the receipt can be anchored on Hedera (HCS topic + registry
+contract) and a provenance-certificate NFT (HTS) is minted for verified claims. A Next.js
+frontend walks anyone through claim to verification to receipt to anchoring, and a third
+party can re-check a receipt against the chain or the mirror node without trusting the
+verifier.
 
 Scaffold it in one command:
 
@@ -13,15 +16,74 @@ Scaffold it in one command:
 npm create scaffold-hbar@latest -- --template livevnx8/scaffold-hbar-provenance-swarm
 ```
 
-## The story in one paragraph
+## Why it matters
 
-A buyer receives coffee claimed as organic single-origin. The seller hands over a claim: farm details,
-every handoff, and document hashes. The swarm verifies each dimension deterministically — the same claim
-always yields the same verdicts — and produces a receipt with `taskHash` (the claim, canonicalized and
-hashed) and `decisionHash` (the claim hash bound to the worker results). That receipt is anchored on
-Hedera. Weeks later, anyone holding the claim ID and decision hash can check the on-chain registry or
-pull the HCS topic message from a mirror node and confirm: *this exact receipt is what was anchored*.
-No trust in the original verifier required.
+Supply-chain claims are easy to forge and hard to re-check. This template turns a product
+claim into a tamper-evident receipt: the same claim always yields the same worker verdicts,
+hashes bind the claim to those verdicts, and Hedera anchors make the receipt independently
+replayable. A forged "verified" receipt is refused at the server gate before any HCS,
+registry, or NFT write.
+
+## What `npm run demo` shows (~30 seconds after install)
+
+Root script (do **not** use a workspace-scoped demo command; the swarm package exposes
+`demo:plan`, and the root wires it):
+
+```bash
+npm run demo
+```
+
+You should see **GREEN / GREEN / RED**:
+
+1. **GREEN** - valid coffee fixture verifies.
+2. **GREEN** - a second valid lot verifies.
+3. **RED** - a tampered attestation is refused; the receipt truthfully records
+   `needs_review` and the failing worker is named.
+
+The demo also prints the recorded-anchor evidence block (historical HCS seq 2 + NFT serial
+#1). UI twin: load the coffee fixture, verify, then click **Tamper attestation** and verify
+again to see the refused claim explain itself.
+
+## Quick start (no Hedera account needed)
+
+```bash
+npm install          # ~9 minutes on a clean machine; Node >= 20.18.3
+npm run build        # builds swarm (dist/) then nextjs; required before `dev`
+npm run demo         # GREEN / GREEN / RED offline teach-in
+npm test             # workspace unit tests, all offline
+```
+
+Run the frontend:
+
+```bash
+npm run build        # if you have not already
+npm run dev --workspace @provenance-swarm/nextjs    # http://localhost:3000
+```
+
+The UI runs fully offline until you add Hedera credentials. The header badge reads
+"Offline demo mode" vs "Hedera testnet connected", and the anchor panel explains exactly
+what to configure. Click **Load coffee fixture** then **Run verification** for the happy
+path; use **Tamper attestation** for the refused path.
+
+## Frozen exhibit: Window 9
+
+Window 9 is a **historical, read-only** research tape on Hedera testnet topic
+[`0.0.10569989`](https://hashscan.io/testnet/topic/0.0.10569989). It is **not** the
+template's live anchor topic. Template live anchors use `HEDERA_TEMPLATE_TOPIC_ID`
+(auto-created when empty). Writing to `0.0.10569989` from template paths is refused.
+
+| Seq | Result | HashScan |
+|---|---|---|
+| 833 | GREEN (valid) | [tx](https://hashscan.io/testnet/transaction/0.0.9032608@1789868602.323750400) |
+| 834 | GREEN (valid) | [tx](https://hashscan.io/testnet/transaction/0.0.9032608@1789869656.328037066) |
+| 835 | RED (refused, withheld) | [tx](https://hashscan.io/testnet/transaction/0.0.9032608@1789870540.047570332) |
+
+Pinned identifiers: [`docs/window-9/identifiers.md`](./docs/window-9/identifiers.md).
+Narrative PDF: [`docs/window-9/decision-integrity-record.pdf`](./docs/window-9/decision-integrity-record.pdf).
+
+Locked red-line from that record (verbatim):
+
+> This is not “the model failed.” The harness failed the artifact on purpose. The worker was honest; the gate did its job. The red does not count toward n — n stays 2. Do not blur.
 
 ## Architecture
 
@@ -49,7 +111,7 @@ packages/
   swarm/       Deterministic agent core: workers, coordinator, receipt builder,
                double-verifier, fixture, plus Hedera adapters
                (HCS anchoring, HTS certificate minting, mirror re-verification)
-  contracts/   Hardhat: ProvenanceRegistry.sol — one-anchor-per-claim registry
+  contracts/   Hardhat: ProvenanceRegistry.sol  -  one-anchor-per-claim registry
                with on-chain lookup and hash verification
   nextjs/      Staged UI (claim → verify → receipt → anchor), receipt inspector,
                third-party "check a receipt" tab, and API routes bridging the
@@ -60,45 +122,40 @@ AGENTS.md      Agent operating notes for this template
 
 ## How verification works
 
-Every step is deterministic — no models, no randomness, no network calls in the verify path:
+Every step is deterministic: no models, no randomness, no network calls in the verify path.
 
-1. **Canonicalize & hash the claim** — `taskHash = sha256(canonical claim JSON)`. Any byte-level
-   change to the claim changes this hash.
-2. **Run the three workers** — each recomputes the hash it is responsible for and compares:
+1. **Canonicalize and hash the claim** - `taskHash = sha256(canonical claim JSON)`. Any
+   byte-level change to the claim changes this hash.
+2. **Run the three workers** - each recomputes the hash it is responsible for and compares:
    - *Origin Attestation Verifier* recomputes `sha256(farm|region|harvestDate|statement)`.
-   - *Custody Chain Verifier* recomputes each `sha256(prevHolder|holder|receivedAt)` and checks
-     the chain links end-to-end.
+   - *Custody Chain Verifier* recomputes each `sha256(prevHolder|holder|receivedAt)` and
+     checks the chain links end-to-end.
    - *Document Hash Verifier* checks every document hash is well-formed 64-char hex.
-3. **Build the receipt** — `decisionHash = sha256(taskHash + worker results)`. The verdict is
-   `verified` only if every worker passes.
-4. **Double-verify** — two independent passes must agree: Pass A re-derives both hashes from the
-   claim; Pass B checks verdict/worker consistency. A tampered claim is *truthfully recorded* as
-   `needs_review` — the receipt never lies about what it saw.
+3. **Build the receipt** - `decisionHash = sha256(taskHash + worker results)`. The verdict
+   is `verified` only if every worker passes.
+4. **Double-verify** - two independent passes must agree: Pass A re-derives both hashes from
+   the claim; Pass B checks verdict/worker consistency. A tampered claim is *truthfully
+   recorded* as `needs_review`. The receipt never lies about what it saw.
+5. **Anchor gate** - `POST /api/anchor` requires the original claim and re-runs
+   `verifyProvenanceReceipt` (and a fresh `verifyClaim`) **before** any HCS, registry, or
+   NFT write. Forged "verified" receipts are rejected with HTTP 403.
 
-## Quick start (no Hedera account needed)
+## Check-a-receipt honesty
 
-```bash
-npm install
-npm run demo --workspace @provenance-swarm/swarm   # credential-free demo: valid claim + tamper demo
-npm test --workspace @provenance-swarm/swarm       # 25 unit tests, all offline
-```
+`POST /api/contract-verify` supports two modes:
 
-Run the frontend:
-
-```bash
-npm run dev --workspace @provenance-swarm/nextjs    # http://localhost:3000
-```
-
-The UI runs fully offline until you add Hedera credentials — the header badge reads
-"Offline demo mode" vs "Hedera testnet connected", and the anchor panel explains exactly what to
-configure. Click **Load coffee fixture** → **Run verification** to see the whole flow in seconds.
+- **claim-reverified** (preferred): post the claim; the server recomputes `decisionHash`
+  before comparing to the registry.
+- **hash-equality-only**: post only `claimId` + `decisionHash`. A match proves the registry
+  holds that hash for that claim ID (first-writer-wins). It does **not** prove claim
+  ownership. The response `note` field says so explicitly.
 
 ## Hedera services in play
 
 | Service | Role | Where |
 |---|---|---|
 | Smart Contract Service | `ProvenanceRegistry` stores `decisionHash` per claim; `verifyReceipt` lets anyone check a presented receipt on-chain | `packages/contracts`, `/api/anchor`, `/api/contract-verify` |
-| HCS | Receipt hash anchored as a topic message — public, timestamped proof of existence | `packages/swarm/src/hedera.ts`, `/api/anchor` |
+| HCS | Receipt hash anchored as a topic message: public, timestamped proof of existence | `packages/swarm/src/hedera.ts`, `/api/anchor` |
 | HTS | Provenance-certificate NFT minted per verified claim, carrying the decision hash | `packages/swarm/src/hedera.ts`, `/api/anchor` |
 | Mirror Node | Frontend re-verifies the HCS anchor via public mirror REST; every step links out to HashScan | `packages/swarm/src/mirror.ts`, `/api/mirror-verify` |
 
@@ -110,7 +167,9 @@ Copy `packages/nextjs/.env.example` to `packages/nextjs/.env`:
 |---|---|---|
 | `HEDERA_OPERATOR_ID` / `HEDERA_OPERATOR_KEY` | any on-chain step | Testnet credentials only; never commit |
 | `HEDERA_NETWORK` | anchoring | `testnet` (default) or `mainnet` |
-| `HEDERA_PROVENANCE_TOPIC_ID` | HCS anchor | auto-created if absent |
+| `HEDERA_TEMPLATE_TOPIC_ID` | live HCS anchors | auto-created if absent; **must not** be `0.0.10569989` |
+| `HEDERA_PROVENANCE_TOPIC_ID` | legacy alias | still honoured if `HEDERA_TEMPLATE_TOPIC_ID` is unset |
+| `HEDERA_EXHIBIT_TOPIC_ID` | docs / UI only | defaults to frozen Window 9 topic `0.0.10569989` (read-only) |
 | `HEDERA_CERTIFICATE_TOKEN_ID` | NFT mint | auto-created if absent |
 | `HEDERA_REGISTRY_ADDRESS` | contract anchor + receipt checks | from `deploy:testnet` |
 | `HEDERA_RPC_URL` | contract calls | defaults to Hashio testnet |
@@ -123,14 +182,14 @@ Copy `packages/nextjs/.env.example` to `packages/nextjs/.env`:
 4. Run the full claim flow in the frontend: verify → anchor → verify on mirror node.
 5. Record the transaction hashes below.
 
-**Verified testnet transactions** — the template's HCS + HTS adapters have already run live
-on testnet (full notes: [`vera-nft/LIVE_RUN.md`](./vera-nft/LIVE_RUN.md)):
+**Verified testnet transactions** (historical exhibit evidence; full notes:
+[`vera-nft/LIVE_RUN.md`](./vera-nft/LIVE_RUN.md)):
 
 | Step | Transaction | HashScan link |
 |---|---|---|
 | Receipt anchor (HCS) | `0.0.9032608@1789565505.352869642` (topic `0.0.10569989`, seq 2) | [transaction](https://hashscan.io/testnet/transaction/0.0.9032608@1789565505.352869642) · [topic](https://hashscan.io/testnet/topic/0.0.10569989) |
 | Certificate NFT mint (HTS) | `0.0.9032608@1789565511.702573940` (token `0.0.10569997`, serial #1) | [transaction](https://hashscan.io/testnet/transaction/0.0.9032608@1789565511.702573940) · [token](https://hashscan.io/testnet/token/0.0.10569997) |
-| Registry deployment | _pending — runs in the build window_ | _pending_ |
+| Registry deployment | _pending: runs in the build window_ | _pending_ |
 
 A fresh end-to-end run from the published template (verify → anchor → mirror re-verify,
 including the registry deployment) will be recorded here during the build window.
@@ -139,9 +198,9 @@ including the registry deployment) will be recorded here during the build window
 
 | Route | Purpose |
 |---|---|
-| `POST /api/verify` | Runs the swarm over a claim; returns `{ receipt, report }` — fully offline |
-| `POST /api/anchor` | Anchors a receipt: HCS topic message, registry contract record, HTS certificate mint |
-| `POST /api/contract-verify` | Third-party check: does the on-chain anchor match this claim ID + decision hash? |
+| `POST /api/verify` | Runs the swarm over a claim; returns `{ receipt, report }` (fully offline) |
+| `POST /api/anchor` | Re-verifies claim+receipt, then anchors: HCS topic message, registry record, HTS certificate mint |
+| `POST /api/contract-verify` | Third-party check: hash-equality-only, or claim-reverified when a claim is posted |
 | `POST /api/mirror-verify` | Re-fetches the HCS topic message from the mirror node and compares decision hashes |
 | `GET /api/config` | Which Hedera features are configured (no secrets leak to the browser) |
 | `GET /api/fixture` | The valid coffee-shipment fixture claim |
@@ -149,23 +208,28 @@ including the registry deployment) will be recorded here during the build window
 ## Testing
 
 ```bash
-npm test --workspace @provenance-swarm/swarm       # 25 tests: workers, coordinator, receipts,
+npm test --workspace @provenance-swarm/swarm       # workers, coordinator, receipts,
                                                    # double-verifier, mirror helper (stubbed fetch)
-npm test --workspace @provenance-swarm/contracts   # 5 tests: anchor/lookup/verify, one-anchor rule
+npm test --workspace @provenance-swarm/contracts   # anchor/lookup/verify, one-anchor rule
 npm run build --workspace @provenance-swarm/nextjs  # production build must compile clean
 ```
 
 ## Honest boundaries
 
-- The verifier workers are **deterministic scoring logic**, not AI models. The "agent swarm" framing
-  refers to the worker/coordinator/registry architecture with verifiable receipts.
-- Live Hedera behavior is demo-grade until the registry deployment and the fresh published-template
-  run above are recorded with real transaction hashes. Everything else in this repo is verified by the
-  offline test suites, which need no credentials.
-- The double-verifier is two independent verification *passes* over the same receipt, not two
-  independent external systems.
-- Hash-chained receipts and mirror re-verification are solid engineering, not novel cryptography.
+- The verifier workers are **deterministic scoring logic**, not AI models. The "agent swarm"
+  framing refers to the worker/coordinator/registry architecture with verifiable receipts.
+- Live Hedera behavior is demo-grade until the registry deployment and the fresh
+  published-template run above are recorded with real transaction hashes. Everything else
+  in this repo is verified by the offline test suites, which need no credentials.
+- The double-verifier is two independent verification *passes* over the same receipt, not
+  two independent external systems. When it reports "accepted" on a `needs_review` receipt,
+  that means the receipt is authentic and truthfully records `needs_review`, not that the
+  claim is verified.
+- Hash-chained receipts and mirror re-verification are solid engineering, not novel
+  cryptography.
+- Topic `0.0.10569989` is the frozen Window 9 exhibit. Template live anchors use
+  `HEDERA_TEMPLATE_TOPIC_ID`.
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT. See [LICENSE](./LICENSE).

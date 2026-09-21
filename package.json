@@ -1,1 +1,24 @@
-{"description":"Scaffold-HBAR template: verifiable supply-chain provenance via a deterministic agent swarm, anchored on Hedera.","name":"scaffold-hbar-provenance-swarm","packageManager":"npm@10.9.4","private":true,"scripts":{"build":"npm run build --workspaces --if-present","demo":"npm run demo:plan --workspace=@provenance-swarm/swarm","lint":"npm run lint --workspaces --if-present","test":"npm run test --workspaces --if-present"},"version":"0.1.0","workspaces":["packages/*"],"devDependencies":{"@eslint/js":"^10.0.1","eslint":"^10.11.0","typescript-eslint":"^8.70.0"}}
+{
+  "description": "Scaffold-HBAR template: verifiable supply-chain provenance via a deterministic agent swarm, anchored on Hedera.",
+  "name": "scaffold-hbar-provenance-swarm",
+  "packageManager": "npm@10.9.4",
+  "private": true,
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "demo": "npm run demo:plan --workspace=@provenance-swarm/swarm",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "typescript-eslint": "^8.70.0"
+  },
+  "engines": {
+    "node": ">=20.18.3"
+  }
+}
