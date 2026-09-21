@@ -102,7 +102,7 @@ Narrative PDF: [`docs/window-9/decision-integrity-record.pdf`](./docs/window-9/d
 
 Locked red-line from that record (verbatim):
 
-> This is not "the model failed." The harness failed the artifact on purpose. The worker was honest; the gate did its job. The red does not count toward n — n stays 2. Do not blur.
+> This is not “the model failed.” The harness failed the artifact on purpose. The worker was honest; the gate did its job. The red does not count toward n — n stays 2. Do not blur.
 
 ## Architecture
 
