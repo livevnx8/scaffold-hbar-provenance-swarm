@@ -201,7 +201,7 @@ Copy `packages/nextjs/.env.example` to `packages/nextjs/.env`:
 | `HEDERA_TEMPLATE_TOPIC_ID` | live HCS anchors | auto-created if absent; **must not** be `0.0.10569989` |
 | `HEDERA_PROVENANCE_TOPIC_ID` | legacy alias | still honoured if `HEDERA_TEMPLATE_TOPIC_ID` is unset |
 | `HEDERA_EXHIBIT_TOPIC_ID` | docs only | defaults to frozen Window 9 topic `0.0.10569989` (read-only) |
-| `HEDERA_CERTIFICATE_TOKEN_ID` | NFT mint | **must be set** (or created out-of-band / via `packages/swarm/scripts/mint-genesis-certificate.ts`); **not** auto-created by `/api/anchor`. If unset, `mintCertificate` fails with "No certificate token configured" and the NFT step reports that error |
+| `HEDERA_CERTIFICATE_TOKEN_ID` | NFT mint | **must be set** — create once with `npm run init:token` (writes this var), or out-of-band / via `packages/swarm/scripts/mint-genesis-certificate.ts`; **not** auto-created by `/api/anchor`. If unset, `mintCertificate` fails with "No certificate token configured" and the NFT step reports that error |
 | `HEDERA_REGISTRY_ADDRESS` | contract anchor + receipt checks | from `deploy:testnet` |
 | `HEDERA_RPC_URL` | contract calls | defaults to Hashio testnet |
 
@@ -209,8 +209,8 @@ Copy `packages/nextjs/.env.example` to `packages/nextjs/.env`:
 
 **Prerequisites.** Node >= 20.18.3. First `npm install` on a clean machine can take **~9 minutes**. A Hedera testnet account funded from the
 [faucet](https://portal.hedera.com) (a few testnet HBAR covers the topic
-create, registry deploy, HCS anchors, and NFT mint), and the registry deployed
-before you anchor (step 3). ECDSA operator keys (e.g. HashPack-style accounts)
+create, registry deploy, HCS anchors, and NFT mint), the certificate collection created via `npm run init:token` (step 3), and the registry
+deployed before you anchor (step 4). ECDSA operator keys (e.g. HashPack-style accounts)
 need `HEDERA_KEY_TYPE=ecdsa` in `packages/nextjs/.env` (the registry path is
 ECDSA-only via ethers); raw 32-byte keys cannot be told apart by inspection and
 the SDK defaults to ED25519.
@@ -226,15 +226,20 @@ chains are not accepted as finalized receipts:
 - **502**: partial or all-failed HCS / registry / NFT stages (`{ ok: false }` plus
   per-stage results). Skipped stages (no registry / non-verified NFT) are not failures.
 - `No certificate token configured` surfaces as a failed NFT stage (502 when the
-  mint was attempted); set `HEDERA_CERTIFICATE_TOKEN_ID`. The anchor path does not
-  auto-create the NFT collection.
+  mint was attempted); run `npm run init:token` (or set `HEDERA_CERTIFICATE_TOKEN_ID`
+  out-of-band). The anchor path does not auto-create the NFT collection.
 - Registry path is **ECDSA-only**; set `HEDERA_KEY_TYPE=ecdsa` for HashPack-style keys.
 
 1. Create a testnet account via the [Hedera Portal](https://portal.hedera.com) and fund it from the faucet.
 2. Copy `packages/nextjs/.env.example` to `packages/nextjs/.env` and add your operator credentials.
-3. Deploy the registry: `npm run deploy:testnet --workspace @provenance-swarm/contracts`
-4. Run the full claim flow in the frontend: verify → anchor → verify on mirror node.
-5. Record the transaction hashes below.
+3. Create the HTS certificate NFT collection and write `HEDERA_CERTIFICATE_TOKEN_ID`:
+   `HEDERA_OPERATOR_ID=… HEDERA_OPERATOR_KEY=… npm run init:token -- --env packages/nextjs/.env`
+   (`--dry-run` prints the collection plan without submitting or writing). This is the last
+   setup step between the offline demo and live testnet NFT mint — `/api/anchor` does not
+   auto-create the collection.
+4. Deploy the registry: `npm run deploy:testnet --workspace @provenance-swarm/contracts`
+5. Run the full claim flow in the frontend: verify → anchor → verify on mirror node.
+6. Record the transaction hashes below.
 
 **Verified testnet transactions**
 
@@ -303,7 +308,8 @@ npm run build --workspace @provenance-swarm/nextjs  # production build must comp
   or hashes document bytes.
 - `HEDERA_CERTIFICATE_TOKEN_ID` is required for NFT mint. Unlike the HCS topic (auto-created
   via `ensureTopic` when absent), `/api/anchor` does not call `createCertificateToken()`.
-  Unset token → mint fails with "No certificate token configured".
+  Create the collection once with `npm run init:token` (writes the id into `.env`), or set
+  it out-of-band. Unset token → mint fails with "No certificate token configured".
 - Auto-created HCS topics have a **null submit key**: anyone who knows the topic id can
   append messages. That is intentional for a public receipt tape in this template, not a
   private channel. Set your own submit key out-of-band if you need append restriction.

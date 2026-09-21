@@ -2,7 +2,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "demo:plan": "tsx scripts/demo-plan.ts",
-    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "init:token": "tsx scripts/init-token/init-token.ts",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest && tsx scripts/init-token/unit-tests.ts",
+    "test:init-token:cli": "bash scripts/init-token/run-tests.sh",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src scripts tests"
   },
