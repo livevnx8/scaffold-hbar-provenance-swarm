@@ -29,7 +29,7 @@ export { ProvenanceClient } from './sdk.js';
 export type { ProvenanceVerification } from './sdk.js';
 export { fixtureClaim } from './fixture.js';
 export { HederaAnchor, configFromEnv, parseOperatorKey, FROZEN_EXHIBIT_TOPIC_ID } from './hedera.js';
-export { veraGenesisClaim } from './vera-genesis.js';
+export { genesisClaim } from './genesis-claim.js';
 export type {
   HederaAnchorConfig,
   AnchorRecord,

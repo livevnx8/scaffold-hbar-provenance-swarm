@@ -1,18 +1,18 @@
 /**
- * LIVE mint of the Vera Genesis Receipt NFT on Hedera.
+ * LIVE mint of the Genesis Receipt NFT on Hedera.
  *
  * Requires testnet credentials in env:
  *   HEDERA_OPERATOR_ID, HEDERA_OPERATOR_KEY (HEDERA_NETWORK=testnet default)
  *
- * Usage: npx tsx scripts/mint-vera-genesis.ts
+ * Usage: npx tsx scripts/mint-genesis-certificate.ts
  *
  * Flow: build the genesis claim → verify it (must be verified) → anchor the
- * receipt on HCS → create the "Vera Genesis Receipt" (VGEN) collection →
+ * receipt on HCS → create the "Genesis Receipt" (GEN) collection →
  * mint serial #1 with the HIP-412 metadata JSON as its on-chain metadata.
  */
 import {
   ProvenanceClient,
-  veraGenesisClaim,
+  genesisClaim,
   HederaAnchor,
 } from '../src/index.js';
 
@@ -33,7 +33,7 @@ async function main(): Promise<void> {
 
   // 1 — verify the genesis claim (offline, deterministic)
   const client = new ProvenanceClient();
-  const claim = veraGenesisClaim();
+  const claim = genesisClaim();
   const { receipt, report } = client.verifyClaim(claim);
   if (receipt.verdict !== 'verified' || report.verdict !== 'accepted') {
     throw new Error(`Genesis claim did not verify: ${receipt.verdict}/${report.verdict}`);
@@ -54,7 +54,7 @@ async function main(): Promise<void> {
   // 4 — create the collection (reuse HEDERA_CERTIFICATE_TOKEN_ID when set)
   const tokenId =
     process.env.HEDERA_CERTIFICATE_TOKEN_ID ||
-    (await anchor.createCertificateToken('Vera Genesis Receipt', 'VGEN'));
+    (await anchor.createCertificateToken('Genesis Receipt', 'GEN'));
   if (process.env.HEDERA_CERTIFICATE_TOKEN_ID) {
     console.log(`reusing collection: ${tokenId}`);
   } else {
@@ -63,7 +63,7 @@ async function main(): Promise<void> {
   console.log(`  ${hashscanToken(network, tokenId)}`);
 
   // 5 — mint. HTS caps NFT metadata at 100 bytes, so the full HIP-412 JSON
-  // (vera-nft/metadata.json, kept in the repo for IPFS pinning) cannot go
+  // (genesis-nft/metadata.json, kept in the repo for IPFS pinning) cannot go
   // on-chain directly. The token carries a compact, self-verifying pointer:
   //   <claimId>/<decisionHash>
   // Anyone can take the decision hash to the HCS topic and replay the receipt.

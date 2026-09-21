@@ -1,7 +1,5 @@
 # Provenance Swarm: a Scaffold-HBAR template
 
-> Node **>= 20.18.3**. First `npm install` on a clean machine can take **~9 minutes**.
-
 Verifiable supply-chain provenance on Hedera. A deterministic agent swarm checks a product's
 origin attestation, custody chain, and document hashes; the coordinator binds the verdicts
 into a tamper-evident receipt; the receipt can be anchored on Hedera (HCS topic + registry
@@ -137,7 +135,7 @@ packages/
   nextjs/      Staged UI (claim → verify → receipt → anchor), receipt inspector,
                third-party "check a receipt" tab, and API routes bridging the
                browser to the swarm core and Hedera
-template.json  Upstream Scaffold-HBAR manifest, consumed by the CLI (not copied into the scaffolded tree)
+template.json  Scaffold-HBAR manifest — lives at the repo root by design; the CLI reads it from there (it is intentionally not copied into the scaffolded tree)
 AGENTS.md      Agent operating notes for this template
 ```
 
@@ -194,13 +192,13 @@ Copy `packages/nextjs/.env.example` to `packages/nextjs/.env`:
 | `HEDERA_TEMPLATE_TOPIC_ID` | live HCS anchors | auto-created if absent; **must not** be `0.0.10569989` |
 | `HEDERA_PROVENANCE_TOPIC_ID` | legacy alias | still honoured if `HEDERA_TEMPLATE_TOPIC_ID` is unset |
 | `HEDERA_EXHIBIT_TOPIC_ID` | docs only | defaults to frozen Window 9 topic `0.0.10569989` (read-only) |
-| `HEDERA_CERTIFICATE_TOKEN_ID` | NFT mint | **must be set** (or created out-of-band / via `packages/swarm/scripts/mint-vera-genesis.ts`); **not** auto-created by `/api/anchor`. If unset, `mintCertificate` fails with "No certificate token configured" and the NFT step reports that error |
+| `HEDERA_CERTIFICATE_TOKEN_ID` | NFT mint | **must be set** (or created out-of-band / via `packages/swarm/scripts/mint-genesis-certificate.ts`); **not** auto-created by `/api/anchor`. If unset, `mintCertificate` fails with "No certificate token configured" and the NFT step reports that error |
 | `HEDERA_REGISTRY_ADDRESS` | contract anchor + receipt checks | from `deploy:testnet` |
 | `HEDERA_RPC_URL` | contract calls | defaults to Hashio testnet |
 
 ## Going to testnet
 
-**Prerequisites.** Node >= 20.18.3, a Hedera testnet account funded from the
+**Prerequisites.** Node >= 20.18.3. First `npm install` on a clean machine can take **~9 minutes**. A Hedera testnet account funded from the
 [faucet](https://portal.hedera.com) (a few testnet HBAR covers the topic
 create, registry deploy, HCS anchors, and NFT mint), and the registry deployed
 before you anchor (step 3). ECDSA operator keys (e.g. HashPack-style accounts)
@@ -232,7 +230,7 @@ chains are not accepted as finalized receipts:
 **Verified testnet transactions**
 
 Historical Window 9 exhibit (read-only tape on topic `0.0.10569989`; full notes:
-[`vera-nft/LIVE_RUN.md`](./vera-nft/LIVE_RUN.md)):
+[`genesis-nft/LIVE_RUN.md`](./genesis-nft/LIVE_RUN.md)):
 
 | Step | Transaction | HashScan link |
 |---|---|---|

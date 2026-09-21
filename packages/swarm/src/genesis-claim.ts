@@ -1,5 +1,5 @@
 /**
- * Provenance Swarm Template — Vera Genesis Receipt claim builder
+ * Provenance Swarm Template — Genesis Receipt claim builder
  *
  * The template verifying its first claim: itself. The origin attestation
  * names the builder, the custody chain hands the build to Stanley, and the
@@ -19,24 +19,23 @@ const repoRoot = join(here, '..', '..', '..');
 const sha256File = (p: string) =>
   createHash('sha256').update(readFileSync(p)).digest('hex');
 
-export function veraGenesisClaim(): ProvenanceClaim {
-  const builder = 'Vera';
-  const builtFor = 'Stanley · livevnx8';
+export function genesisClaim(): ProvenanceClaim {
+  const builder = 'Provenance Swarm Template';
   const buildDate = '2026-09-16';
   const statement =
     'Genesis receipt: the provenance-swarm template verifies its first claim — itself. ' +
     'Three deterministic workers checked this build; the receipt is anchored below.';
 
   return {
-    claimId: 'vera-genesis-001',
-    product: 'Vera Genesis Receipt',
+    claimId: 'genesis-001',
+    product: 'Genesis Receipt',
     lot: 'GENESIS-001',
     origin: {
       farm: builder,
-      region: builtFor,
+      region: builder,
       harvestDate: buildDate,
       statement,
-      attestationHash: sha256(`${builder}|${builtFor}|${buildDate}|${statement}`),
+      attestationHash: sha256(`${builder}|${builder}|${buildDate}|${statement}`),
     },
     custody: [
       {
