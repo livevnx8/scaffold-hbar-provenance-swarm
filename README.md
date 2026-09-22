@@ -1,5 +1,8 @@
 # Provenance Swarm: a Scaffold-HBAR template
 
+> **Naming note:** "swarm" here means a multi-agent verification swarm (independent
+> checker agents that vote on a claim). It is not the Swarm RWA tokenization protocol.
+
 Verifiable supply-chain provenance on Hedera. A deterministic agent swarm checks a product's
 origin attestation, custody chain, and document hashes; the coordinator binds the verdicts
 into a tamper-evident receipt; the receipt can be anchored on Hedera (HCS topic + registry
