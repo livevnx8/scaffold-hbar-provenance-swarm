@@ -5,12 +5,13 @@
   "private": true,
   "scripts": {
     "build": "npm run build --workspace=@provenance-swarm/swarm && npm run build --workspace=@provenance-swarm/nextjs",
+    "start": "npm start --workspace=@provenance-swarm/nextjs",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "echo 'format: no formatter configured'",
     "demo": "npm run demo:plan --workspace=@provenance-swarm/swarm",
     "init:token": "npm run init:token --workspace=@provenance-swarm/swarm --",
-    "format": "echo 'format: no formatter configured'",
-    "lint": "npm run lint --workspaces --if-present",
-    "pretest": "npm run build --workspace=@provenance-swarm/swarm",
-    "test": "npm run test --workspaces --if-present"
+    "pretest": "npm run build --workspace=@provenance-swarm/swarm"
   },
   "version": "0.1.0",
   "workspaces": [
