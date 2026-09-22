@@ -10,6 +10,35 @@
 import { attestationHashFor, handoffHashFor } from './hash.js';
 import { ProvenanceClaim } from './types.js';
 
+/**
+ * Declared value for the value-attestation fixture: $1,200.00 against
+ * 12,891.76599682 HBAR. At the pinned cassette round ($0.09308267/HBAR) the
+ * implied value is $1,199.99 — ratio 1.00x, inside the 0.5x–2x band, so the
+ * fixture verifies GREEN once oracle evidence is attached. A 100x declared
+ * equivalent ($120,000) fails the band (the RED-value demo path).
+ * Amounts are decimal strings in smallest units (tinybar) and USD cents.
+ */
+export const FIXTURE_VALUE_AMOUNT_TINYBARS = '1289176599682';
+export const FIXTURE_VALUE_USD_CENTS = '120000';
+
+/**
+ * The base fixture plus declared value terms — WITHOUT oracle evidence.
+ * Served by /api/fixture; the verify route attaches live evidence via
+ * attestClaimValue(). The offline demo attaches fixtureOracleEvidence()
+ * from @provenance-swarm/oracle instead.
+ */
+export function fixtureValueClaim(): ProvenanceClaim {
+  return {
+    ...fixtureClaim(),
+    claimId: 'claim-cof-042-value',
+    declaredValue: {
+      amount: FIXTURE_VALUE_AMOUNT_TINYBARS,
+      currency: 'HBAR',
+      usdEquivalent: FIXTURE_VALUE_USD_CENTS,
+    },
+  };
+}
+
 export function fixtureClaim(): ProvenanceClaim {
   const farm = 'Finca Santa Rosa';
   const region = 'Huila, Colombia';

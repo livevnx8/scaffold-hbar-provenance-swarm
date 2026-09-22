@@ -6,6 +6,9 @@ export type {
   CustodyLink,
   ProvenanceDocument,
   OriginAttestation,
+  DeclaredValue,
+  FeedReading,
+  OracleEvidence,
 } from '@provenance-swarm/swarm';
 
 export interface ChainConfig {
@@ -14,6 +17,7 @@ export interface ChainConfig {
   certificateToken: boolean;
   registry: boolean;
   network: 'testnet' | 'mainnet';
+  oracle: boolean;
 }
 
 export interface AnchorResults {

@@ -61,28 +61,39 @@ Run from the repo root:
 npm run demo
 ```
 
-(Do not run it workspace-scoped: the swarm package names its script `demo:plan`;
+(Do not run it workspace-scoped: the oracle package names its script `demo:plan`;
 the root `demo` script wires it up.)
 
-You should see **GREEN / GREEN / RED**:
+You should see **GREEN / GREEN / RED / RED-value**:
 
 1. **GREEN**: valid coffee fixture verifies.
 2. **GREEN**: a second valid lot verifies.
 3. **RED**: a tampered attestation is refused; the receipt truthfully records
    `needs_review` and the failing worker is named.
+4. **RED-value**: a claim declaring a 100x USD equivalent against its HBAR amount
+   is refused by the value-attestation worker, which recomputes the implied USD
+   value from a pinned Chainlink round (the cassette — a recorded real testnet
+   round, so the demo stays deterministic and offline) and fails the 0.5x–2x band.
 
 The demo also prints the recorded-anchor evidence block (historical HCS seq 2 + NFT serial
-#1). UI twin: load the coffee fixture, verify, then click **Tamper attestation** and verify
-again to see the refused claim explain itself.
+#1). UI twin: load the coffee fixture, verify, then click **Tamper attestation** or
+**Tamper value** and verify again to see the refused claim explain itself.
 
 ## Quick start (no Hedera account needed)
 
 ```bash
 npm install          # ~9 minutes on a clean machine; Node >= 20.18.3
-npm run build        # builds swarm (dist/) then nextjs; required before `dev`
-npm run demo         # GREEN / GREEN / RED offline teach-in
+npm run build        # builds swarm, then oracle, then nextjs; required before `dev`
+npm run demo         # GREEN / GREEN / RED / RED-value offline teach-in
 npm test             # workspace unit tests, all offline
 ```
+
+Build ordering matters: `nextjs` and `oracle` import the swarm package's compiled
+`dist/`, and the oracle tests import both compiled packages. The root `pretest`
+hook builds swarm + oracle before `npm test`, so always run tests from the root
+(or build swarm + oracle first) — running `npm test --workspace` on a clean
+checkout without a prior build fails with `MODULE_NOT_FOUND` on the workspace
+imports.
 
 Run the frontend:
 

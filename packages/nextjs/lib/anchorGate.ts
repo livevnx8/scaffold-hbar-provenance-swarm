@@ -1,7 +1,5 @@
-import {
-  verifyProvenanceReceipt,
-  ProvenanceClient,
-} from '@provenance-swarm/swarm';
+import { verifyProvenanceReceipt } from '@provenance-swarm/swarm';
+import { createClient } from './client';
 import type { ProvenanceReceipt, ProvenanceClaim } from '@provenance-swarm/swarm';
 
 /**
@@ -44,7 +42,7 @@ export function gateReceipt(
   // a hand-crafted receipt that was never produced by the pipeline for the posted
   // claim cannot sail through; self-consistent fabricated claims still pass by
   // design (see Honest boundaries).
-  const { receipt: recomputed } = new ProvenanceClient().verifyClaim(claim);
+  const { receipt: recomputed } = createClient().verifyClaim(claim);
   if (
     recomputed.taskHash !== receipt.taskHash ||
     recomputed.decisionHash !== receipt.decisionHash ||

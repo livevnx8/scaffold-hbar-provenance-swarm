@@ -14,6 +14,14 @@ function emptyClaim(): ProvenanceClaim {
   };
 }
 
+function setDeclared(
+  c: ProvenanceClaim,
+  patch: Partial<NonNullable<ProvenanceClaim['declaredValue']>>,
+): ProvenanceClaim {
+  const cur = c.declaredValue ?? { amount: '', currency: 'HBAR' as const, usdEquivalent: '' };
+  return { ...c, declaredValue: { ...cur, ...patch } };
+}
+
 export default function ClaimForm({
   onVerify,
   busy,
@@ -176,6 +184,70 @@ export default function ClaimForm({
         </div>
       ))}
 
+      <div className="rowhead" style={{ marginTop: '1.25rem' }}>
+        <span>Declared value (Chainlink-attested)</span>
+        {claim.declaredValue && (
+          <button
+            className="linkbtn"
+            onClick={() => setClaim((c) => ({ ...c, declaredValue: undefined, oracleEvidence: undefined }))}
+          >
+            Remove
+          </button>
+        )}
+      </div>
+      {!claim.declaredValue ? (
+        <div className="field">
+          <button
+            className="btn ghost"
+            style={{ padding: '0.35rem 0.8rem', fontSize: '0.8rem' }}
+            onClick={() => setClaim((c) => setDeclared(c, {}))}
+          >
+            + Declare shipment value
+          </button>
+          <p className="sub" style={{ marginTop: '0.5rem' }}>
+            Optional. When present, a fourth worker checks the declared USD equivalent against the
+            live Chainlink feed for the declared currency (0.5x–2x band). The observed round is
+            committed into the claim as oracle evidence.
+          </p>
+        </div>
+      ) : (
+        <div className="rowitem">
+          <div className="grid2">
+            <div className="field">
+              <label>Amount (smallest unit: tinybar/wei/satoshi)</label>
+              <input
+                value={claim.declaredValue.amount}
+                onChange={(e) => setClaim((c) => setDeclared(c, { amount: e.target.value }))}
+                placeholder="1289176599682"
+              />
+            </div>
+            <div className="field">
+              <label>Currency</label>
+              <select
+                value={claim.declaredValue.currency}
+                onChange={(e) =>
+                  setClaim((c) =>
+                    setDeclared(c, { currency: e.target.value as 'HBAR' | 'ETH' | 'BTC' }),
+                  )
+                }
+              >
+                <option value="HBAR">HBAR</option>
+                <option value="ETH">ETH</option>
+                <option value="BTC">BTC</option>
+              </select>
+            </div>
+          </div>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label>Declared USD equivalent (cents)</label>
+            <input
+              value={claim.declaredValue.usdEquivalent}
+              onChange={(e) => setClaim((c) => setDeclared(c, { usdEquivalent: e.target.value }))}
+              placeholder="120000 = $1,200.00"
+            />
+          </div>
+        </div>
+      )}
+
       <div className="btnrow">
         <button className="btn ghost" onClick={loadFixture} disabled={loadingFixture || busy}>
           {loadingFixture ? 'Loading…' : 'Load coffee fixture'}
@@ -193,6 +265,25 @@ export default function ClaimForm({
           title="Overwrite the origin attestation hash so the next verification must refuse"
         >
           Tamper attestation
+        </button>
+        <button
+          className="btn ghost"
+          onClick={() =>
+            setClaim((c) =>
+              setDeclared(
+                { ...c, claimId: c.claimId ? `${c.claimId}-value-100x` : 'claim-value-100x' },
+                {
+                  usdEquivalent: c.declaredValue?.usdEquivalent
+                    ? (BigInt(c.declaredValue.usdEquivalent) * BigInt(100)).toString()
+                    : '12000000',
+                },
+              ),
+            )
+          }
+          disabled={busy || !claim.declaredValue?.usdEquivalent}
+          title="Inflate the declared USD equivalent 100x so the value worker must refuse"
+        >
+          Tamper value
         </button>
         <button className="btn" onClick={() => onVerify(claim)} disabled={busy}>
           {busy ? (

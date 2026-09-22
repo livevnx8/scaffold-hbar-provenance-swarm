@@ -6,6 +6,7 @@ import WorkerResults from '../components/WorkerResults';
 import ReceiptCard from '../components/ReceiptCard';
 import AnchorPanel from '../components/AnchorPanel';
 import VerifyOnChain from '../components/VerifyOnChain';
+import OracleEvidencePanel from '../components/OracleEvidence';
 import type { ProvenanceClaim, ProvenanceReceipt, DoubleVerifierReport, ChainConfig } from '../lib/types';
 
 type Tab = 'verify' | 'check';
@@ -45,6 +46,10 @@ export default function Home() {
       } else {
         setReceipt(data.receipt);
         setReport(data.report);
+        // The verify route echoes back the enriched claim (oracleEvidence
+        // attached). Anchor must post THAT claim — the gate re-runs the swarm
+        // on it and requires an identical decisionHash.
+        if (data.claim) setClaim(data.claim);
         setRunId((n) => n + 1);
       }
     } catch {
@@ -111,6 +116,7 @@ export default function Home() {
           {receipt && report && (
             <>
               <WorkerResults key={`w-${runId}`} results={receipt.results} />
+              {claim?.oracleEvidence && <OracleEvidencePanel evidence={claim.oracleEvidence} />}
               <ReceiptCard receipt={receipt} report={report} />
               <AnchorPanel key={`a-${runId}`} receipt={receipt} claim={claim} />
             </>
