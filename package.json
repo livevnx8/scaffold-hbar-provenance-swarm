@@ -12,7 +12,7 @@
     "demo": "npm run demo:plan --workspace=@provenance-swarm/oracle",
     "check:live": "npm run check:live --workspace=@provenance-swarm/oracle",
     "init:token": "npm run init:token --workspace=@provenance-swarm/swarm --",
-    "pretest": "npm run build --workspace=@provenance-swarm/swarm && npm run build --workspace=@provenance-swarm/oracle"
+    "pretest": "npm run build --workspace=@provenance-swarm/swarm && npm run build --workspace=@provenance-swarm/anchors && npm run build --workspace=@provenance-swarm/oracle"
   },
   "version": "0.1.0",
   "workspaces": [
