@@ -1,4 +1,5 @@
 import type { AnchorRequest, AnchorResult, LedgerAnchor } from './types.js';
+import { assertValidAnchorRequest } from './types.js';
 import { buildExplorerUrl } from './explorer.js';
 import { LEDGER_META } from './ledgers.js';
 
@@ -35,6 +36,7 @@ export function createHcsAnchor(
     displayName: LEDGER_META['hedera-hcs'].displayName,
     ported: true,
     async anchor(request: AnchorRequest): Promise<AnchorResult> {
+      assertValidAnchorRequest(request);
       const record = await backend.anchorReceipt({
         claimId: request.claimId,
         version: request.receiptVersion,

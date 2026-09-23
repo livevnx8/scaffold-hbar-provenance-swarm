@@ -50,6 +50,39 @@ export class AnchorNotPortedError extends Error {
 }
 
 /**
+ * Fail-closed request validation. Every ported adapter must run this before
+ * touching its backend (keyed or not): a malformed request is a caller bug,
+ * and caller bugs must surface as clear errors, never as anchors of garbage.
+ * Throws on the first invalid field.
+ */
+export function assertValidAnchorRequest(request: AnchorRequest): void {
+  const fail = (field: string, why: string): never => {
+    throw new Error(`[anchor-request] invalid ${field}: ${why}`);
+  };
+  if (typeof request.claimId !== 'string' || request.claimId.trim().length === 0) {
+    fail('claimId', 'must be a non-empty string');
+  }
+  if (request.claimId.length > 256) {
+    fail('claimId', 'must be at most 256 characters');
+  }
+  if (request.receiptVersion !== '1.0' && request.receiptVersion !== '1.1') {
+    fail('receiptVersion', "must be a known receipt version ('1.0' | '1.1')");
+  }
+  if (typeof request.taskHash !== 'string' || !/^[0-9a-fA-F]{64}$/.test(request.taskHash)) {
+    fail('taskHash', 'must be a 64-char hex sha256 digest');
+  }
+  if (typeof request.decisionHash !== 'string' || !/^[0-9a-fA-F]{64}$/.test(request.decisionHash)) {
+    fail('decisionHash', 'must be a 64-char hex sha256 digest');
+  }
+  if (typeof request.verdict !== 'string' || request.verdict.trim().length === 0) {
+    fail('verdict', 'must be a non-empty string');
+  }
+  if (typeof request.anchoredAt !== 'string' || Number.isNaN(Date.parse(request.anchoredAt))) {
+    fail('anchoredAt', 'must be a parseable ISO-8601 timestamp');
+  }
+}
+
+/**
  * The contract a ledger anchor implements.
  *
  * `ported` is true only when the ledger's anchor script is ported AND its

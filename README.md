@@ -212,6 +212,16 @@ Every step is deterministic: no models, no randomness, no network calls in the v
 | HTS | Provenance-certificate NFT minted per verified claim, carrying the decision hash | `packages/swarm/src/hedera.ts`, `/api/anchor` |
 | Mirror Node | Frontend re-verifies the HCS anchor via public mirror REST; every step links out to HashScan | `packages/swarm/src/mirror.ts`, `/api/mirror-verify` |
 
+### Multi-ledger evidence (scaffolding)
+
+Anchoring goes through the ledger-neutral `@provenance-swarm/anchors` package
+(`packages/anchors`): one `LedgerAnchor` interface, one explorer-URL choke point,
+and per-ledger adapters. Hedera HCS is the ported reference adapter; XRPL,
+Solana, and Base adapters are present but fail-closed ("Pending port") until
+their ports are independently verified. Every explorer link is validated —
+malformed anchor ids and unknown networks throw instead of guessing. See
+`packages/anchors/PORTING.md` and `docs/multi-ledger-anchors.md`.
+
 ### Environment
 
 Copy `packages/nextjs/.env.example` to `packages/nextjs/.env`:

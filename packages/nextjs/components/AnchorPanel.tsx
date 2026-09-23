@@ -3,30 +3,8 @@
 import { useEffect, useState } from 'react';
 import type { ProvenanceReceipt, ProvenanceClaim, ChainConfig, AnchorResults } from '../lib/types';
 import { hashscanTx, hashscanTopic, hashscanToken, hashscanContract } from '../lib/types';
-import {
-  buildExplorerUrl,
-  type AnchorResult,
-} from '@provenance-swarm/anchors/client';
-
-/** Map a successful HCS stage into the ledger-neutral anchor shape. */
-function toAnchorResults(data: AnchorResults, fallbackNetwork: string): AnchorResult[] {
-  const out: AnchorResult[] = [];
-  const network = data.hcs.network ?? fallbackNetwork;
-  if (data.hcs.ok && data.hcs.transactionId) {
-    try {
-      out.push({
-        ledger: 'hedera-hcs',
-        network,
-        anchorId: data.hcs.transactionId,
-        explorerUrl: buildExplorerUrl('hedera-hcs', network, data.hcs.transactionId),
-      });
-    } catch {
-      // buildExplorerUrl refuses to guess on unknown networks: no row is
-      // better than a wrong link.
-    }
-  }
-  return out;
-}
+import { toAnchorResults } from '../lib/evidence';
+import type { AnchorResult } from '@provenance-swarm/anchors/client';
 
 export default function AnchorPanel({
   receipt,

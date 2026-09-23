@@ -28,8 +28,11 @@ can never show a fake green.
 1. Implement the adapter in `src/<ledger>.ts`. It must satisfy `LedgerAnchor`:
    - `anchor()` performs exactly one anchor and returns the ledger-native
      proof pointer as `anchorId` plus the explorer link.
+   - Call `assertValidAnchorRequest(request)` before touching the backend —
+     malformed requests fail before any keyed operation.
    - `explorerUrl()` stays pure (no network). Extend `buildExplorerUrl` in
-     `src/explorer.ts` for any new network.
+     `src/explorer.ts` for any new network, including the anchor-id shape in
+     `ANCHOR_ID_PATTERNS` so malformed ids can never produce a misleading link.
    - Keyed backends (operator keys, signers) are constructor-injected, read
      from env at the call site, never imported by this package. Unit tests
      use fakes; the house rule stands: no ledger I/O inside unit tests.

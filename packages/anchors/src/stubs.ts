@@ -1,6 +1,5 @@
 import type {
   AnchorLedger,
-  AnchorRequest,
   AnchorResult,
   LedgerAnchor,
 } from './types.js';
