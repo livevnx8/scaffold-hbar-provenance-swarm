@@ -4,7 +4,7 @@
   "packageManager": "npm@10.9.4",
   "private": true,
   "scripts": {
-    "build": "npm run build --workspace=@provenance-swarm/swarm && npm run build --workspace=@provenance-swarm/oracle && npm run build --workspace=@provenance-swarm/nextjs",
+    "build": "npm run build --workspace=@provenance-swarm/swarm && npm run build --workspace=@provenance-swarm/anchors && npm run build --workspace=@provenance-swarm/oracle && npm run build --workspace=@provenance-swarm/nextjs",
     "start": "npm start --workspace=@provenance-swarm/nextjs",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",

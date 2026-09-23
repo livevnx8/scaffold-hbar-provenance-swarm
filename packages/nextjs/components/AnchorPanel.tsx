@@ -3,8 +3,40 @@
 import { useEffect, useState } from 'react';
 import type { ProvenanceReceipt, ProvenanceClaim, ChainConfig, AnchorResults } from '../lib/types';
 import { hashscanTx, hashscanTopic, hashscanToken, hashscanContract } from '../lib/types';
+import {
+  buildExplorerUrl,
+  type AnchorResult,
+} from '@provenance-swarm/anchors/client';
 
-export default function AnchorPanel({ receipt, claim }: { receipt: ProvenanceReceipt; claim: ProvenanceClaim | null }) {
+/** Map a successful HCS stage into the ledger-neutral anchor shape. */
+function toAnchorResults(data: AnchorResults, fallbackNetwork: string): AnchorResult[] {
+  const out: AnchorResult[] = [];
+  const network = data.hcs.network ?? fallbackNetwork;
+  if (data.hcs.ok && data.hcs.transactionId) {
+    try {
+      out.push({
+        ledger: 'hedera-hcs',
+        network,
+        anchorId: data.hcs.transactionId,
+        explorerUrl: buildExplorerUrl('hedera-hcs', network, data.hcs.transactionId),
+      });
+    } catch {
+      // buildExplorerUrl refuses to guess on unknown networks: no row is
+      // better than a wrong link.
+    }
+  }
+  return out;
+}
+
+export default function AnchorPanel({
+  receipt,
+  claim,
+  onAnchored,
+}: {
+  receipt: ProvenanceReceipt;
+  claim: ProvenanceClaim | null;
+  onAnchored?: (anchors: AnchorResult[]) => void;
+}) {
   const [config, setConfig] = useState<ChainConfig | null>(null);
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<AnchorResults | null>(null);
@@ -38,10 +70,12 @@ export default function AnchorPanel({ receipt, claim }: { receipt: ProvenanceRec
         // 502 partial/all-failed still carries per-stage results.
         if (data && (data.hcs || data.contract || data.nft)) {
           setResults(data);
+          onAnchored?.(toAnchorResults(data, config?.network ?? 'testnet'));
         }
         setError(data.error || 'Anchoring failed');
       } else {
         setResults(data);
+        onAnchored?.(toAnchorResults(data, config?.network ?? 'testnet'));
       }
     } catch {
       setError('Network error while anchoring');
