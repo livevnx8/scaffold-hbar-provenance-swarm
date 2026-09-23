@@ -5,7 +5,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint app components lib",
-    "test": "tsx --test lib/anchorGate.test.ts lib/registryGuard.test.ts lib/tamper.test.ts lib/contractVerifyInput.test.ts"
+    "test": "tsx --test lib/anchorGate.test.ts lib/registryGuard.test.ts lib/tamper.test.ts lib/contractVerifyInput.test.ts lib/contractVerifyRecompute.test.ts lib/mintGate.test.ts"
   },
   "author": "livevnx8",
   "dependencies": {

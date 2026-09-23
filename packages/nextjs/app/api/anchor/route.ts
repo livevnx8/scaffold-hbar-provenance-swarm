@@ -8,6 +8,7 @@ import {
 } from '@provenance-swarm/swarm';
 import { gateReceipt } from '@/lib/anchorGate';
 import { registryGuard } from '@/lib/registryGuard';
+import { mintSkipReason } from '@/lib/mintGate';
 import type {
   ProvenanceReceipt,
   ProvenanceClaim,
@@ -211,9 +212,13 @@ export async function POST(req: Request) {
     }
   }
 
-  // 3 — certificate NFT (verified claims only)
-  if (receipt.verdict !== 'verified') {
-    out.nft = { ok: false, skipped: 'verdict-not-verified' };
+  // 3 — certificate NFT. Sequenced on registry success (S4): the registry is
+  // the one-anchor enforcement point, so a reverted/duplicate registry write
+  // must not mint a second serial, and a registry RPC failure must not leave
+  // an NFT with no registry row. mintCertificate is not internally one-shot.
+  const mintSkip = mintSkipReason(receipt.verdict, out.contract.ok);
+  if (mintSkip) {
+    out.nft = { ok: false, skipped: mintSkip };
   } else {
     try {
       out.nft = { ok: true, ...(await anchor.mintCertificate(receipt)) };
