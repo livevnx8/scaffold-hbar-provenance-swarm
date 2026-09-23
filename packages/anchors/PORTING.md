@@ -1,8 +1,9 @@
 # Porting a ledger anchor
 
 `@provenance-swarm/anchors` is the Phase 3 multi-ledger evidence package. One
-interface (`LedgerAnchor`), one ported reference (Hedera HCS), three fail-closed
-stubs (XRPL, Solana, Base).
+interface (`LedgerAnchor`), one ported reference (Hedera HCS), field-proven
+keyed-run scripts for XRPL and Solana (`scripts/`), and fail-closed stubs where
+no proven script exists yet (Base; the in-app adapters for XRPL/Solana).
 
 ## What "ported" means
 
@@ -22,6 +23,22 @@ these hold:
 Until then the stub stays, and `anchor()` keeps throwing
 `AnchorNotPortedError`. A stub never fabricates a result — an unported ledger
 can never show a fake green.
+
+## Keyed-run scripts vs in-app adapters
+
+Two different artifacts, two different bars:
+
+- **Keyed-run scripts** (`scripts/xrpl-attest.mjs`, `scripts/solana-attest.mjs`,
+  `scripts/verify-attestation.mjs`) are the field-proven tools operators run
+  with their own keys on their own run word. XRPL: 8/8 attestations across two
+  independent rigs (2026-09-23). Solana: 4/4 on devnet (2026-09-23). The
+  universal checker independently re-verifies every attestation from public
+  chain data.
+- **In-app adapters** (`src/<ledger>.ts` implementing `LedgerAnchor`) are the
+  in-frontend anchor path. These remain fail-closed stubs until implemented
+  per the four criteria above. A proven script does not auto-promote the
+  adapter: the adapter is a separate implementation with its own conformance
+  tests.
 
 ## How to port a ledger
 

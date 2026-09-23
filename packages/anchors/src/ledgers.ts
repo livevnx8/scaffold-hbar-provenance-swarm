@@ -33,7 +33,7 @@ export const LEDGER_META: Record<AnchorLedger, LedgerMeta> = {
     networks: ['testnet', 'devnet', 'mainnet'],
     explorerName: 'XRPL Explorer',
     statusNote:
-      "Pending port: awaiting the verified port of Devin's XRPL anchor script (re-verification outstanding).",
+      'Keyed-run script ported and field-proven (scripts/xrpl-attest.mjs: 8/8 attestations, tesSUCCESS, memo byte-match, two independent rigs 2026-09-23). In-app adapter remains a fail-closed stub per PORTING.md.',
   },
   solana: {
     ledger: 'solana',
@@ -42,7 +42,7 @@ export const LEDGER_META: Record<AnchorLedger, LedgerMeta> = {
     networks: ['devnet', 'mainnet-beta'],
     explorerName: 'Solscan',
     statusNote:
-      "Pending port: awaiting the verified port of Devin's Solana anchor script (re-verification outstanding).",
+      'Keyed-run script ported and field-proven (scripts/solana-attest.mjs: 4/4 attestations on devnet 2026-09-23). In-app adapter remains a fail-closed stub per PORTING.md.',
   },
   base: {
     ledger: 'base',
@@ -51,6 +51,6 @@ export const LEDGER_META: Record<AnchorLedger, LedgerMeta> = {
     networks: ['sepolia', 'mainnet'],
     explorerName: 'BaseScan',
     statusNote:
-      "Pending port: awaiting the verified port of Devin's Base anchor script (re-verification outstanding).",
+      'Pending: the EVM attester is written but not yet field-tested (Base Sepolia blocked on faucet funding 2026-09-23). It stays out of this repo until it passes a live run.',
   },
 };

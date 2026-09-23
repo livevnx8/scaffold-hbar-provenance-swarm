@@ -79,6 +79,45 @@ The demo also prints the recorded-anchor evidence block (historical HCS seq 2 + 
 #1). UI twin: load the coffee fixture, verify, then click **Tamper attestation** or
 **Tamper value** and verify again to see the refused claim explain itself.
 
+## How the infrastructure fits together
+
+Five layers, each independently checkable. A judge can start at any layer and
+verify it without trusting the others.
+
+**1. The swarm (offline, deterministic).** Three worker agents check one claim
+each: origin attestation (do the hashes recompute from the supplied fields?),
+custody chain (is every handoff intact?), document hashes (are they well-formed
+64-char hex?). The coordinator binds the three verdicts into a receipt.
+`taskHash = sha256(canonical claim)` identifies the claim;
+`decisionHash = sha256(canonical {version, taskHash, workers})` binds the
+claim to the verdicts. Same claim in, same verdict out — no network, no
+randomness, no credentials. A tampered claim verifies to `needs_review` with
+the refusing worker named, and the receipt records that truthfully.
+
+**2. Hedera anchors (the trust root).** A verified receipt is anchored three
+ways on Hedera testnet: the receipt goes out as an HCS topic message, the
+`decisionHash` is stored per claim in the `ProvenanceRegistry` smart contract
+(which enforces one anchor per claim and refuses duplicates), and a
+provenance-certificate NFT (HTS) is minted for verified claims only.
+`needs_review` claims anchor the refusal but mint nothing.
+
+**3. Mirror re-verification (trust, but re-read).** The frontend re-fetches the
+HCS message from the public mirror node and byte-compares the `decisionHash`.
+Anyone with the claim ID can replay this check from any machine — the chain
+is the source of truth, not the app.
+
+**4. Cross-chain attestations (the receipt travels).** The same proof envelope
+(claim ID, verdict, decision hash, task hash, HCS sequence, consensus
+timestamp) is attested on XRPL and Solana: memo-carrying transactions whose
+payloads byte-match the Hedera anchor. Field-proven scripts live in
+`packages/anchors/scripts/`.
+
+**5. The universal checker (the product).** One script takes any attestation —
+an XRPL hash, a Solana signature — re-reads the foreign transaction, decodes
+the envelope, and back-checks every field against Hedera: HCS message,
+registry `verifyReceipt`, Chainlink oracle for value claims. 12 checks per
+attestation, 13 for value claims. If anything drifts, it fails loudly.
+
 ## Quick start (no Hedera account needed)
 
 ```bash
@@ -300,6 +339,22 @@ Historical Window 9 exhibit (read-only tape on topic `0.0.10569989`; full notes:
 | Certificate NFT mint (HTS) | `0.0.9034044@1790000007.430466835` (serial #1) | [transaction](https://hashscan.io/testnet/transaction/0.0.9034044@1790000007.430466835) |
 | Mirror re-verify | decisionHash match on seq 3 | [mirror message](https://testnet.mirrornode.hedera.com/api/v1/topics/0.0.10649257/messages/3) |
 | Forged `/api/anchor` | tampered decisionHash → HTTP **403** | refused (no write) |
+
+**Latest runs** (2026-09-23; two independent operators; full evidence:
+[`docs/e2e/E2E-TESTNET-2026-09-23.md`](./docs/e2e/E2E-TESTNET-2026-09-23.md)):
+
+| Run | Anchors | Result |
+|---|---|---|
+| Vera's rig (`0.0.10685865`) | HCS seq 3–6, topic `0.0.10681528` | 4/4 `verifyReceipt` true; duplicate anchor refused (409); mint not-run (`INVALID_SIGNATURE` — operator lacks supply key; not faked) |
+| Devin's rig (`0.0.9034044`) | HCS seq 7–10, topic `0.0.10681528` | 4/4 `verifyReceipt` true; NFT serials **4** and **5** minted for the two verified claims; red claims minted nothing |
+| XRPL devnet | 8/8 attestations (both rigs) | strict `tesSUCCESS`, memo byte-match |
+| Solana devnet | 4/4 attestations | memo byte-match |
+| Universal checker | 100/100 checks | independently re-verified from a third machine |
+
+Live identifiers: registry
+[`0x5Ad54d39d860Cb2c2c6A27c787eead7358137e1a`](https://hashscan.io/testnet/contract/0x5Ad54d39d860Cb2c2c6A27c787eead7358137e1a),
+topic [`0.0.10681528`](https://hashscan.io/testnet/topic/0.0.10681528), PROVC
+token [`0.0.10653074`](https://hashscan.io/testnet/token/0.0.10653074).
 
 ## API routes (frontend backend)
 

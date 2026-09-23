@@ -19,7 +19,7 @@ export function stubAnchor(ledger: Exclude<AnchorLedger, 'hedera-hcs'>): LedgerA
     Promise.reject(
       new AnchorNotPortedError(
         ledger,
-        "awaiting the verified port of Devin's anchor script (re-verification outstanding)",
+        "keyed-run script ported in packages/anchors/scripts/; the in-app adapter is not yet implemented (see PORTING.md)",
       ),
     );
   return {
