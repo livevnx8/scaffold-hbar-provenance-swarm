@@ -87,11 +87,26 @@ export async function attestClaimValue(
   }
 
   const amount = parseDecimalInt(value.amount)!;
-  const evidence: OracleEvidence = {
-    readings: [reading],
-    compositeUsdCents: compositeUsdCents(amount, reading).toString(),
-    computedAt: nowSec,
-  };
+  // The evidence commitment runs BigInt math over the observed reading. A
+  // hostile or compromised feed can return a shaped-but-insane round
+  // (negative or gigantic decimals, non-numeric answer) that makes this
+  // throw a raw RangeError/SyntaxError. The boundary contract is
+  // AttestationError-only, so any failure here maps to kind 'feed' — the
+  // caller 502s and no receipt is produced either way.
+  let evidence: OracleEvidence;
+  try {
+    evidence = {
+      readings: [reading],
+      compositeUsdCents: compositeUsdCents(amount, reading).toString(),
+      computedAt: nowSec,
+    };
+  } catch (err) {
+    throw new AttestationError(
+      `oracle feed ${spec.pair} returned an unusable round: ` +
+        (err instanceof Error ? err.message : String(err)),
+      'feed',
+    );
+  }
 
   return { ...claim, oracleEvidence: evidence };
 }

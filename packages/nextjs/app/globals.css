@@ -430,6 +430,13 @@ header.hero p {
   font-weight: 600;
 }
 
+/* Claim IDs are user-controlled and can be arbitrarily long. Without
+ * overflow-wrap a spaceless ID overflows the receipt card horizontally. */
+.kv code {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
 .verdict-banner {
   border-radius: 0.8rem;
   padding: 1.1rem 1.3rem;

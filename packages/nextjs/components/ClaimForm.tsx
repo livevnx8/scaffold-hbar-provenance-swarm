@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { ProvenanceClaim, CustodyLink, ProvenanceDocument } from '../lib/types';
+import { tamperUsdEquivalent } from '../lib/tamper';
 
 function emptyClaim(): ProvenanceClaim {
   return {
@@ -278,9 +279,7 @@ export default function ClaimForm({
                     : 'claim-tampered-value',
                 },
                 {
-                  usdEquivalent: c.declaredValue?.usdEquivalent
-                    ? (BigInt(c.declaredValue.usdEquivalent) * BigInt(100)).toString()
-                    : '12000000',
+                  usdEquivalent: tamperUsdEquivalent(c.declaredValue?.usdEquivalent),
                 },
               ),
             )

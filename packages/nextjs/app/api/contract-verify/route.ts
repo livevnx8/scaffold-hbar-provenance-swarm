@@ -32,8 +32,19 @@ export async function POST(req: Request) {
   }
 
   const { claimId, decisionHash, claim } = body;
-  if (!claimId || !decisionHash) {
-    return NextResponse.json({ error: 'claimId and decisionHash are required' }, { status: 400 });
+  // Both fields feed string-only operations below (startsWith/toLowerCase
+  // and the ethers call). A non-string truthy value (number, array, object)
+  // would otherwise throw a TypeError mid-route and 500. Fail closed at 400.
+  if (
+    typeof claimId !== 'string' ||
+    !claimId ||
+    typeof decisionHash !== 'string' ||
+    !decisionHash
+  ) {
+    return NextResponse.json(
+      { error: 'claimId and decisionHash are required as strings' },
+      { status: 400 },
+    );
   }
 
   let mode: 'claim-reverified' | 'hash-equality-only' = 'hash-equality-only';
