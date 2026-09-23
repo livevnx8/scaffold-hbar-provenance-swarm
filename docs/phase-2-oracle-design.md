@@ -108,6 +108,11 @@ adapter deployment. Confirm which set v1.2 used before freezing the constant.
 - Both present → run `verifyOracleEvidence` (§1.5); verdict = all checks ok.
 - Findings carry the human-readable evidence summary:
   `HBAR/USD 0x59bC…B4a round 18446744073709562931 answer 9980000 (8dp) → $0.0998/HBAR`.
+- The narrative summary is built only from math-safe readings (answer parses
+  as a plain integer string, `0 <= decimals <= 18`): a hostile-but-shaped
+  reading (e.g. `decimals: -5`, `answer: "abc"`) is refused by the verifier,
+  and the worker must refuse — never throw — so a hostile claim cannot 500
+  `/api/verify` or crash the anchor gate's re-run.
 
 ### 1.5 Verifier (`verifier.ts`)
 

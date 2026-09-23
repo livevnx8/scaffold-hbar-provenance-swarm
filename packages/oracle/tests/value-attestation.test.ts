@@ -197,6 +197,35 @@ describe('ValueAttestationWorker', () => {
     assert.equal(v.passed, false);
     assert.ok(v.findings.some(f => f.includes('value attestation refused')));
   });
+
+  test('fail closed: worker does not throw on hostile-but-shaped readings', () => {
+    // BREAKER regression: these readings pass the narrative shape checks
+    // but their math throws — BigInt('abc') is a SyntaxError, 10n**-5n and
+    // 10n**(2^53-1) are RangeErrors. The verifier refuses each of them;
+    // the worker must refuse, not throw (a throw would 500 /api/verify
+    // and crash the anchor gate's re-run on a hostile claim).
+    const hostiles: Array<[string, Partial<FeedReading>]> = [
+      ['negative decimals', { decimals: -5 }],
+      ['gigantic decimals', { decimals: Number.MAX_SAFE_INTEGER }],
+      ['non-numeric answer', { answer: 'abc' }],
+      ['float answer', { answer: '1.5' }],
+      ['scientific-notation answer', { answer: '12e3' }],
+    ];
+    for (const [name, override] of hostiles) {
+      const claim = valueClaim();
+      claim.oracleEvidence = {
+        readings: [readingWith(override)],
+        compositeUsdCents: '119999',
+        computedAt: CHAINLINK_CASSETTE_READING.updatedAt,
+      };
+      const v = worker.verify(claim); // must refuse, not throw
+      assert.equal(v.passed, false, name);
+      assert.ok(
+        v.findings.some(f => f.includes('value attestation refused')),
+        name,
+      );
+    }
+  });
 });
 
 describe('verifyOracleEvidence — two check groups, reject-on-any-fail', () => {
@@ -294,5 +323,65 @@ describe('verifyOracleEvidence — two check groups, reject-on-any-fail', () => 
     const r = verifyOracleEvidence(claim);
     assert.equal(r.ok, false);
     assert.equal(r.checks.find(c => c.name === 'feed_registry')?.ok, false);
+  });
+
+  test('BREAKER regression (mirror): ETH claim priced at the HBAR feed must refuse', () => {
+    // The first binding test covers HBAR-claim/BTC-evidence; this covers the
+    // mirror direction. The HBAR price is used to price 1 ETH so the band
+    // and composite both pass — only currency_binding may refuse.
+    const hbarReading = readingWith({});
+    const claim = claimWithEvidence({ readings: [hbarReading] });
+    const amount = 1_000_000_000_000_000_000n; // 1 ETH in wei
+    const scale = 100_000_000n * 10n ** 8n; // HBAR feed: tinybar scale * 10^decimals
+    const implied = ((amount * BigInt(hbarReading.answer) * 100n) / scale).toString();
+    claim.declaredValue = { amount: amount.toString(), currency: 'ETH', usdEquivalent: implied };
+    claim.oracleEvidence = {
+      readings: [hbarReading],
+      compositeUsdCents: implied,
+      computedAt: hbarReading.updatedAt,
+    };
+    const r = verifyOracleEvidence(claim);
+    assert.equal(r.ok, false);
+    assert.equal(r.checks.find(c => c.name === 'currency_binding')?.ok, false);
+    assert.equal(r.checks.find(c => c.name === 'composite_recompute')?.ok, true);
+    assert.equal(r.checks.find(c => c.name === 'value_band')?.ok, true);
+  });
+
+  test('readings beyond the first are validated but do not price the claim', () => {
+    // Pins the semantic: the composite and the band price readings[0].
+    // A second fully-valid reading with a wildly different answer is
+    // inert — it changes nothing about the verdict.
+    const claim = claimWithEvidence({
+      readings: [readingWith({}), readingWith({ answer: '1' })],
+    });
+    const r = verifyOracleEvidence(claim);
+    assert.equal(r.ok, true);
+  });
+
+  test('fail closed: zero answer, bad decimals, bad mode, float updatedAt', () => {
+    const cases: Array<[string, Partial<FeedReading>]> = [
+      ['zero answer', { answer: '0' }],
+      ['decimals mismatch vs registry', { decimals: 18 }],
+      ['unknown mode', { mode: 'simulated' as unknown as FeedReading['mode'] }],
+      ['float updatedAt', { updatedAt: 1790031828.5 }],
+    ];
+    for (const [name, override] of cases) {
+      const claim = claimWithEvidence({ readings: [readingWith(override)] });
+      const r = verifyOracleEvidence(claim);
+      assert.equal(r.ok, false, name);
+      assert.equal(r.checks.find(c => c.name === 'feed_registry')?.ok, false, name);
+    }
+  });
+
+  test('fail closed: empty readings array and non-integer computedAt', () => {
+    const empty = claimWithEvidence({ readings: [] });
+    const r1 = verifyOracleEvidence(empty);
+    assert.equal(r1.ok, false);
+    assert.equal(r1.checks.find(c => c.name === 'evidence_present')?.ok, false);
+
+    const floatTs = claimWithEvidence({ computedAt: 1790031828.5 });
+    const r2 = verifyOracleEvidence(floatTs);
+    assert.equal(r2.ok, false);
+    assert.equal(r2.checks.find(c => c.name === 'evidence_present')?.ok, false);
   });
 });

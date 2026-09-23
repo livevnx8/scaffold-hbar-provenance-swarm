@@ -78,7 +78,19 @@ export class ValueAttestationWorker implements ProvenanceWorker {
       Number.isSafeInteger(reading.updatedAt) &&
       Number.isSafeInteger(reading.decimals);
 
-    if (narrativeSafe && amount !== null && declared !== null) {
+    // The narrative runs BigInt(answer) and 10^decimals — both throw on
+    // hostile-but-shaped values (negative or gigantic decimals, a
+    // non-numeric answer). The verifier below refuses such readings; the
+    // narrative must not throw first. parseDecimalInt is total (never
+    // throws), and decimals pinned to the registry's sane range keeps the
+    // exponent allocation bounded.
+    const narrativeMathSafe =
+      narrativeSafe &&
+      parseDecimalInt(reading!.answer) !== null &&
+      reading!.decimals >= 0 &&
+      reading!.decimals <= 18;
+
+    if (narrativeMathSafe && amount !== null && declared !== null) {
       const implied = compositeUsdCents(amount, reading);
       const ratio = formatRatio(ratioBasisPoints(declared, amount, reading));
       findings.push(

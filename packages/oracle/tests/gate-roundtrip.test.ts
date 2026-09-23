@@ -74,6 +74,26 @@ describe('gate round-trip', () => {
     assert.equal(gate.ok, false);
   });
 
+  test('hostile reading cannot crash the gate re-run: needs_review, not a throw', () => {
+    // End-to-end pin of the worker no-throw guarantee: a reading whose
+    // narrative math would throw (10n**-5n) must flow through verifyClaim
+    // and the gate re-run as a truthful refusal, never an exception.
+    const claim = {
+      ...fixtureValueClaim(),
+      oracleEvidence: fixtureOracleEvidence(),
+    };
+    const reading0 = claim.oracleEvidence!.readings[0];
+    claim.oracleEvidence = {
+      readings: [{ ...reading0, decimals: -5 }],
+      compositeUsdCents: '119999',
+      computedAt: reading0.updatedAt,
+    };
+    const { receipt } = createClient().verifyClaim(claim); // must not throw
+    assert.equal(receipt.verdict, 'needs_review');
+    const gate = gateCheck(receipt, claim);
+    assert.equal(gate.ok, true); // the refusal itself re-verifies
+  });
+
   test('swapped evidence after verify breaks taskHash → gate fails', () => {
     const claim = { ...fixtureValueClaim(), oracleEvidence: fixtureOracleEvidence() };
     const { receipt } = createClient().verifyClaim(claim);
