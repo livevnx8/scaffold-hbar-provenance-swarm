@@ -115,16 +115,21 @@ adapter deployment. Confirm which set v1.2 used before freezing the constant.
 two-group structure, **reject-on-any-fail**:
 
 - **Pass A — evidence integrity:** every feed entry's address is in the registry
-  (no substitute feeds); `roundId`, `answer`, `decimals`, `updatedAt` well-formed;
-  `compositeUsd` recomputes exactly from the entries (canonical fixed-point path).
+  (no substitute feeds); every entry prices the DECLARED currency
+  (`currency_binding` — an HBAR claim cannot attach a BTC/USD reading and pass
+  against the friendliest feed's price); `roundId`, `answer`, `decimals`,
+  `updatedAt` well-formed; `compositeUsd` recomputes exactly from the entries
+  (canonical fixed-point path).
 - **Pass B — policy:** `declaredValue` well-formed (amount > 0, currency ∈
   {HBAR, ETH, BTC}, usdEquivalent > 0); ratio `declaredUsd / compositeUsd` within
   **[0.5, 2.0]** inclusive.
 
-An async companion `verifyOracleEvidenceOnChain(claim)` (used by the optional
-`/api/oracle-verify` endpoint) additionally re-reads `getRoundData(roundId)` per
-entry and confirms the recorded answer matches the on-chain round — this is the
-third-party audit path, and it is *additive*: the sync core never needs it.
+A natural third-party audit path (not yet implemented) would be an async
+companion `verifyOracleEvidenceOnChain(claim)` — e.g. behind an optional
+`/api/oracle-verify` endpoint — that re-reads `getRoundData(roundId)` per
+entry and confirms the recorded answer matches the on-chain round. The
+`HashioPriceFeed.getRound(roundId)` port already exposes the primitive.
+It would be *additive*: the sync core never needs it.
 
 ### 1.6 Receipt model
 

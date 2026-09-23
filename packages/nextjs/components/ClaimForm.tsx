@@ -271,7 +271,12 @@ export default function ClaimForm({
           onClick={() =>
             setClaim((c) =>
               setDeclared(
-                { ...c, claimId: c.claimId ? `${c.claimId}-value-100x` : 'claim-value-100x' },
+                {
+                  ...c,
+                  claimId: c.claimId
+                    ? `${c.claimId.replace(/-value$/, '')}-tampered-value`
+                    : 'claim-tampered-value',
+                },
                 {
                   usdEquivalent: c.declaredValue?.usdEquivalent
                     ? (BigInt(c.declaredValue.usdEquivalent) * BigInt(100)).toString()

@@ -52,8 +52,8 @@ function feedScale(reading: FeedReading): bigint {
   return unitScale * 10n ** BigInt(reading.decimals);
 }
 
-/** 'HBAR/USD' -> 'HBAR'. */
-function pairCurrency(pair: string): string {
+/** 'HBAR/USD' -> 'HBAR'. Exported so the verifier can bind the valuation reading to the declared currency. */
+export function pairCurrency(pair: string): string {
   return pair.split('/')[0] ?? '';
 }
 

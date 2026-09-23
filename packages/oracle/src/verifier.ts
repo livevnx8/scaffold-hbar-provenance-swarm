@@ -6,7 +6,8 @@
  * discipline as HieroDoubleVerifier's pass A / pass B:
  *
  *   Pass A — evidence integrity: readings well-formed, feed addresses pinned
- *            to the registry, round fields sane, compositeUsdCents recomputes
+ *            to the registry, every reading prices the DECLARED currency
+ *            (currency_binding), round fields sane, compositeUsdCents recomputes
  *            exactly, committed-value consistency (computedAt cannot predate
  *            its own newest round; a reading cannot postdate the evidence
  *            beyond skew).
@@ -30,6 +31,7 @@ import {
 } from './feeds.js';
 import {
   parseDecimalInt,
+  pairCurrency,
   compositeUsdCents,
   withinBand,
   declaredValueError,
@@ -48,6 +50,7 @@ function check(name: string, ok: boolean, detail: string): VerificationCheck {
 export const ORACLE_PASS_A = [
   'evidence_present',
   'feed_registry',
+  'currency_binding',
   'round_integrity',
   'composite_recompute',
   'evidence_consistency',
@@ -57,6 +60,10 @@ export const ORACLE_PASS_A = [
 export const ORACLE_PASS_B = ['declared_value_shape', 'value_band'] as const;
 
 function validateReading(r: FeedReading): string | null {
+  // A null/non-object reading must fail closed, not throw on field access.
+  if (typeof r !== 'object' || r === null) {
+    return 'reading is not an object';
+  }
   // Type guards first: malformed field types must fail closed, not throw.
   if (
     typeof r.feedAddress !== 'string' ||
@@ -152,11 +159,30 @@ export function verifyOracleEvidence(claim: ProvenanceClaim): OracleVerification
     ),
   );
 
+  // Currency binding: every reading must price the DECLARED currency.
+  // Without this, a claim declaring HBAR could attach a BTC/USD reading and
+  // pass the band against the friendliest registered feed's price. The
+  // honest producer (attestation.ts) always writes one reading for the
+  // declared currency, so this is fail-closed with no honest false refusal.
+  const declaredCurrency = claim.declaredValue?.currency;
+  let bindingOk = false;
+  let bindingDetail = 'no declared currency to bind readings to';
+  if (evidencePresent && readingsOk && typeof declaredCurrency === 'string') {
+    const bad = evidence!.readings.find(r => pairCurrency(r.pair) !== declaredCurrency);
+    bindingOk = !bad;
+    bindingDetail = bindingOk
+      ? `all ${evidence!.readings.length} reading(s) price the declared currency ${declaredCurrency}`
+      : `reading ${bad!.pair} does not price the declared currency ${declaredCurrency}`;
+  }
+  checks.push(check('currency_binding', bindingOk, bindingDetail));
+
   // Round integrity is folded into feed_registry's per-reading gates; keep a
   // separate named check for the answeredInRound/positivity class so reports
-  // distinguish "wrong feed" from "malformed round".
+  // distinguish "wrong feed" from "malformed round". Gated on readingsOk so
+  // a non-object reading (already refused above) cannot throw here.
   const roundIntegrityOk =
     evidencePresent &&
+    readingsOk &&
     evidence!.readings.every(r => {
       const roundId = parseDecimalInt(r.roundId);
       const answered = parseDecimalInt(r.answeredInRound);
@@ -203,7 +229,12 @@ export function verifyOracleEvidence(claim: ProvenanceClaim): OracleVerification
   let consistencyOk = false;
   let consistencyDetail = 'no evidence';
   if (evidencePresent && readingsOk) {
-    const maxUpdated = Math.max(...evidence!.readings.map(r => r.updatedAt));
+    // No Math.max(...) spread: a hostile claim could pack a huge readings
+    // array and turn the spread into a stack overflow. A loop cannot throw.
+    let maxUpdated = 0;
+    for (const r of evidence!.readings) {
+      if (r.updatedAt > maxUpdated) maxUpdated = r.updatedAt;
+    }
     const notPredated = evidence!.computedAt >= maxUpdated;
     const notPostdated = evidence!.readings.every(
       r => r.updatedAt <= evidence!.computedAt + FEED_FUTURE_SKEW_SEC,

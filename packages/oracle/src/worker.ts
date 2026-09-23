@@ -64,8 +64,21 @@ export class ValueAttestationWorker implements ProvenanceWorker {
     const reading = evidence?.readings?.[0];
     const amount = parseDecimalInt(claim.declaredValue.amount);
     const declared = parseDecimalInt(claim.declaredValue.usdEquivalent);
+    // The narrative dereferences reading fields, so it must only run on a
+    // well-shaped reading — a malformed entry (e.g. {}) is refused by the
+    // verifier below and must not throw here. Fail closed, not loud.
+    const narrativeSafe =
+      !!reading &&
+      typeof reading === 'object' &&
+      typeof reading.pair === 'string' &&
+      typeof reading.feedAddress === 'string' &&
+      typeof reading.roundId === 'string' &&
+      typeof reading.answer === 'string' &&
+      typeof reading.mode === 'string' &&
+      Number.isSafeInteger(reading.updatedAt) &&
+      Number.isSafeInteger(reading.decimals);
 
-    if (reading && amount !== null && declared !== null) {
+    if (narrativeSafe && amount !== null && declared !== null) {
       const implied = compositeUsdCents(amount, reading);
       const ratio = formatRatio(ratioBasisPoints(declared, amount, reading));
       findings.push(

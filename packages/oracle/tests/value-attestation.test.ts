@@ -56,6 +56,19 @@ describe('compositor', () => {
     assert.equal(withinBand(239998n, amount, CHAINLINK_CASSETTE_READING), true);
   });
 
+  test('exact rational edges: precisely 0.5x and 2.0x pass, one cent beyond fails', () => {
+    // $1.00/HBAR at 8dp, 2 HBAR in tinybar → implied exactly 200 cents.
+    // 100 = exactly 0.5x and 400 = exactly 2.0x must pass (inclusive edges);
+    // 99 and 401 must fail. This exercises the cross-multiplied exact
+    // rational, not the floored cent display.
+    const reading = readingWith({ answer: '100000000' });
+    const amount = 200_000_000n;
+    assert.equal(withinBand(100n, amount, reading), true);
+    assert.equal(withinBand(400n, amount, reading), true);
+    assert.equal(withinBand(99n, amount, reading), false);
+    assert.equal(withinBand(401n, amount, reading), false);
+  });
+
   test('just outside the band fails: 0.49x and 2.00000002x', () => {
     const amount = 1289176599682n;
     assert.equal(withinBand(59999n, amount, CHAINLINK_CASSETTE_READING), false);
@@ -172,13 +185,25 @@ describe('ValueAttestationWorker', () => {
     const v = worker.verify(claim);
     assert.equal(v.passed, false);
   });
+
+  test('fail closed: worker does not throw on a shapeless reading entry', () => {
+    const claim = valueClaim();
+    claim.oracleEvidence = {
+      readings: [{} as unknown as FeedReading],
+      compositeUsdCents: '1',
+      computedAt: CHAINLINK_CASSETTE_READING.updatedAt,
+    };
+    const v = worker.verify(claim); // must refuse, not throw
+    assert.equal(v.passed, false);
+    assert.ok(v.findings.some(f => f.includes('value attestation refused')));
+  });
 });
 
 describe('verifyOracleEvidence — two check groups, reject-on-any-fail', () => {
   test('all checks pass on the fixture evidence', () => {
     const r = verifyOracleEvidence(valueClaim());
     assert.equal(r.ok, true);
-    assert.equal(r.checks.length, 7);
+    assert.equal(r.checks.length, 8);
     assert.ok(r.checks.every(c => c.ok));
   });
 
@@ -213,5 +238,61 @@ describe('verifyOracleEvidence — two check groups, reject-on-any-fail', () => 
   test('ETH and BTC currencies resolve to their pinned feeds', () => {
     assert.equal(CHAINLINK_FEEDS_TESTNET.ETH.address, '0xb9d461e0b962aF219866aDfA7DD19C52bB9871b9');
     assert.equal(CHAINLINK_FEEDS_TESTNET.BTC.address, '0x058fE79CB5775d4b167920Ca6036B824805A9ABd');
+  });
+
+  test('BREAKER regression: HBAR claim priced at the BTC feed must refuse', () => {
+    // Wrong-currency evidence: every other check is crafted green; only
+    // currency_binding may refuse. Before the binding check this passed 7/7.
+    const btcReading = readingWith({
+      pair: 'BTC/USD',
+      feedAddress: CHAINLINK_FEEDS_TESTNET.BTC.address,
+      answer: '11000000000000', // $110,000.00 at 8dp
+    });
+    const claim = claimWithEvidence({ readings: [btcReading] });
+    const amount = BigInt(claim.declaredValue!.amount);
+    const scale = 100_000_000n * 10n ** 8n; // tinybar scale * 10^decimals
+    const implied = ((amount * BigInt(btcReading.answer) * 100n) / scale).toString();
+    claim.declaredValue = { ...claim.declaredValue!, usdEquivalent: implied };
+    claim.oracleEvidence = {
+      readings: [btcReading],
+      compositeUsdCents: implied,
+      computedAt: btcReading.updatedAt,
+    };
+    const r = verifyOracleEvidence(claim);
+    assert.equal(r.ok, false);
+    assert.equal(r.checks.find(c => c.name === 'currency_binding')?.ok, false);
+    assert.equal(r.checks.find(c => c.name === 'feed_registry')?.ok, true);
+    assert.equal(r.checks.find(c => c.name === 'composite_recompute')?.ok, true);
+    assert.equal(r.checks.find(c => c.name === 'value_band')?.ok, true);
+  });
+
+  test('ETH claim with the ETH feed passes currency binding', () => {
+    const ethReading = readingWith({
+      pair: 'ETH/USD',
+      feedAddress: CHAINLINK_FEEDS_TESTNET.ETH.address,
+      answer: '320000000000', // $3,200.00 at 8dp
+    });
+    const claim = claimWithEvidence({ readings: [ethReading] });
+    const amount = 1_000_000_000_000_000_000n; // 1 ETH in wei
+    const scale = 1_000_000_000_000_000_000n * 10n ** 8n;
+    const implied = ((amount * BigInt(ethReading.answer) * 100n) / scale).toString();
+    claim.declaredValue = { amount: amount.toString(), currency: 'ETH', usdEquivalent: implied };
+    claim.oracleEvidence = {
+      readings: [ethReading],
+      compositeUsdCents: implied,
+      computedAt: ethReading.updatedAt,
+    };
+    const r = verifyOracleEvidence(claim);
+    assert.equal(r.ok, true);
+    assert.equal(r.checks.find(c => c.name === 'currency_binding')?.ok, true);
+  });
+
+  test('fail closed: null reading entry does not throw', () => {
+    const claim = claimWithEvidence({
+      readings: [null as unknown as FeedReading],
+    });
+    const r = verifyOracleEvidence(claim);
+    assert.equal(r.ok, false);
+    assert.equal(r.checks.find(c => c.name === 'feed_registry')?.ok, false);
   });
 });

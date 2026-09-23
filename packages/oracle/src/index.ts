@@ -24,6 +24,7 @@ export {
   formatRatio,
   formatUsd,
   formatPrice,
+  pairCurrency,
   declaredValueError,
 } from './compositor.js';
 export {
