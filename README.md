@@ -173,11 +173,13 @@ npm test             # workspace unit tests, all offline
 ```
 
 Build ordering matters: `nextjs` and `oracle` import the swarm package's compiled
-`dist/`, and the oracle tests import both compiled packages. The root `pretest`
-hook builds swarm + anchors + oracle before `npm test`, so always run tests from the root
-(or build swarm + anchors + oracle first); running `npm test --workspace` on a clean
-checkout without a prior build fails with `MODULE_NOT_FOUND` on the workspace
-imports.
+`dist/`, and the oracle tests import both compiled packages. Root `npm test`
+builds swarm + anchors + oracle first via `build:test-deps`, so a clean
+checkout works with a single `npm test`. (An earlier `pretest` hook did not
+reliably fire under `npm run test --workspaces`, so the build step is now
+explicit in the `test` script.) Running `npm test --workspace` on a clean
+checkout without a prior build still fails with `MODULE_NOT_FOUND` on the
+workspace imports; run root `npm test` or build the three packages first.
 
 Run the frontend:
 

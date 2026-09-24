@@ -6,13 +6,13 @@
   "scripts": {
     "build": "npm run build --workspace=@provenance-swarm/swarm && npm run build --workspace=@provenance-swarm/anchors && npm run build --workspace=@provenance-swarm/oracle && npm run build --workspace=@provenance-swarm/nextjs",
     "start": "npm start --workspace=@provenance-swarm/nextjs",
-    "test": "npm run test --workspaces --if-present",
+    "test": "npm run build:test-deps && npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "format": "echo 'format: no formatter configured'",
     "demo": "npm run demo:plan --workspace=@provenance-swarm/oracle",
     "check:live": "npm run check:live --workspace=@provenance-swarm/oracle",
     "init:token": "npm run init:token --workspace=@provenance-swarm/swarm --",
-    "pretest": "npm run build --workspace=@provenance-swarm/swarm && npm run build --workspace=@provenance-swarm/anchors && npm run build --workspace=@provenance-swarm/oracle"
+    "build:test-deps": "npm run build --workspace=@provenance-swarm/swarm && npm run build --workspace=@provenance-swarm/anchors && npm run build --workspace=@provenance-swarm/oracle"
   },
   "version": "0.1.0",
   "workspaces": [
