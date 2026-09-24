@@ -164,15 +164,15 @@ attestation, 13 for value claims. If anything drifts, it fails loudly.
 
 ```bash
 npm install          # ~9 minutes on a clean machine; Node >= 20.18.3
-npm run build        # builds swarm, then oracle, then nextjs; required before `dev`
+npm run build        # builds swarm, anchors, oracle, then nextjs; required before `dev`
 npm run demo         # GREEN / GREEN / RED / RED-value offline teach-in
 npm test             # workspace unit tests, all offline
 ```
 
 Build ordering matters: `nextjs` and `oracle` import the swarm package's compiled
 `dist/`, and the oracle tests import both compiled packages. The root `pretest`
-hook builds swarm + oracle before `npm test`, so always run tests from the root
-(or build swarm + oracle first); running `npm test --workspace` on a clean
+hook builds swarm + anchors + oracle before `npm test`, so always run tests from the root
+(or build swarm + anchors + oracle first); running `npm test --workspace` on a clean
 checkout without a prior build fails with `MODULE_NOT_FOUND` on the workspace
 imports.
 
