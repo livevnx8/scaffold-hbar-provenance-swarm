@@ -9,7 +9,7 @@
  * claim anchor twice and mint twice (adversarial finding F6, 2026-09-21),
  * so the anchor route fails closed when HEDERA_REGISTRY_ADDRESS is unset.
  * Deploy one with:
- *   npm run deploy:testnet --workspace=@provenance-swarm/contracts
+ *   npm run deploy:testnet --workspace=@provenance-swarm/hardhat
  */
 export function registryGuard(): { ok: true; address: string } | { ok: false; error: string } {
   const address = process.env.HEDERA_REGISTRY_ADDRESS?.trim();

@@ -9,7 +9,7 @@ anchored on Hedera. Forkable via `npm exec --yes create-scaffold-hbar@latest -- 
 
 - `packages/swarm/`: the agent core. Pure TypeScript, no framework. `src/` holds the domain logic;
   `tests/` holds the jest suite; `scripts/demo-plan.ts` runs the offline demo.
-- `packages/contracts/`: Hardhat workspace. `contracts/ProvenanceRegistry.sol` is the on-chain anchor.
+- `packages/hardhat/`: Hardhat workspace. `contracts/ProvenanceRegistry.sol` is the on-chain anchor.
 - `packages/nextjs/`: Next.js App Router frontend. Talks to the swarm through API routes.
 - `template.json`: upstream Scaffold-HBAR manifest consumed by the CLI (not present in the scaffolded tree). Keep `capabilities` in sync with what actually exists in this repo.
 
@@ -20,8 +20,8 @@ npm install
 npm run demo                       # offline swarm demo (no credentials)
 npm test                           # every workspace suite
 npm test --workspace @provenance-swarm/swarm
-npm test --workspace @provenance-swarm/contracts
-npm run deploy:testnet --workspace @provenance-swarm/contracts
+npm test --workspace @provenance-swarm/hardhat
+npm run deploy:testnet --workspace @provenance-swarm/hardhat
 npm run lint                       # eslint across all workspaces
 ```
 

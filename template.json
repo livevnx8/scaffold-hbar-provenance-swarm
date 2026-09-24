@@ -37,7 +37,7 @@
               "text": "packages/nextjs/.env.example \u2192 packages/nextjs/.env, then add your Hedera testnet account"
             },
             {
-              "command": "npm run deploy:testnet --workspace=@provenance-swarm/contracts",
+              "command": "npm run deploy:testnet --workspace=@provenance-swarm/hardhat",
               "label": "Deploy the registry contract"
             },
             {

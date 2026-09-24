@@ -205,7 +205,7 @@ export default function AnchorPanel({
           </p>
           {!config?.registry && (
             <div className="aresult" style={{ color: 'var(--muted)' }}>
-              No registry deployed. Run <code style={{ fontFamily: 'var(--mono)' }}>npm run deploy:testnet --workspace=@provenance-swarm/contracts</code> first.
+              No registry deployed. Run <code style={{ fontFamily: 'var(--mono)' }}>npm run deploy:testnet --workspace=@provenance-swarm/hardhat</code> first.
             </div>
           )}
           {results?.contract.ok && (
