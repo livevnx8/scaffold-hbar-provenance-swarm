@@ -30,7 +30,7 @@
     "typechain": "^8.3.0"
   },
   "license": "MIT",
-  "name": "@provenance-swarm/contracts",
+  "name": "@provenance-swarm/hardhat",
   "private": true,
   "version": "0.1.0",
   "engines": {
