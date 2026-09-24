@@ -102,7 +102,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          'No registry contract configured. Deploy one with: npm run deploy:testnet --workspace=@provenance-swarm/contracts',
+          'No registry contract configured. Deploy one with: npm run deploy:testnet --workspace=@provenance-swarm/hardhat',
         mode,
         note:
           mode === 'hash-equality-only'

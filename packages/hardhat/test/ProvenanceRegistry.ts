@@ -52,4 +52,47 @@ describe("ProvenanceRegistry", function () {
       registry.anchorReceipt(claimId, "0x0000000000000000000000000000000000000000000000000000000000000000"),
     ).to.be.revertedWith("empty decisionHash");
   });
+
+  it("sets the deployer as the first operator", async function () {
+    const { registry } = await deploy();
+    const [deployer] = await ethers.getSigners();
+    expect(await registry.operator()).to.equal(await deployer.getAddress());
+  });
+
+  it("reverts anchoring from a non-operator (no claimId squatting)", async function () {
+    const { registry } = await deploy();
+    const [, stranger] = await ethers.getSigners();
+    await expect(
+      registry.connect(stranger).anchorReceipt(claimId, decisionHash),
+    ).to.be.revertedWith("not operator");
+    // The claim stays unanchored: no squat happened.
+    await expect(registry.getAnchor(claimId)).to.be.revertedWith("unknown claim");
+  });
+
+  it("rotates the operator; the old operator loses anchoring rights", async function () {
+    const { registry } = await deploy();
+    const [deployer, next] = await ethers.getSigners();
+
+    await expect(registry.transferOperator(await next.getAddress()))
+      .to.emit(registry, "OperatorTransferred")
+      .withArgs(await deployer.getAddress(), await next.getAddress());
+    expect(await registry.operator()).to.equal(await next.getAddress());
+
+    await expect(registry.anchorReceipt(claimId, decisionHash)).to.be.revertedWith(
+      "not operator",
+    );
+    await registry.connect(next).anchorReceipt(claimId, decisionHash);
+    expect(await registry.verifyReceipt(claimId, decisionHash)).to.equal(true);
+  });
+
+  it("reverts operator transfer to the zero address and from non-operators", async function () {
+    const { registry } = await deploy();
+    const [, stranger] = await ethers.getSigners();
+    await expect(
+      registry.transferOperator("0x0000000000000000000000000000000000000000"),
+    ).to.be.revertedWith("zero operator");
+    await expect(
+      registry.connect(stranger).transferOperator(await stranger.getAddress()),
+    ).to.be.revertedWith("not operator");
+  });
 });

@@ -7,6 +7,7 @@ import ReceiptCard from '../components/ReceiptCard';
 import AnchorPanel from '../components/AnchorPanel';
 import EvidenceView from '../components/EvidenceView';
 import VerifyOnChain from '../components/VerifyOnChain';
+import AttestationChecker from '../components/AttestationChecker';
 import OracleEvidencePanel from '../components/OracleEvidence';
 import type { ProvenanceClaim, ProvenanceReceipt, DoubleVerifierReport, ChainConfig } from '../lib/types';
 import type { AnchorResult } from '@provenance-swarm/anchors/client';
@@ -128,7 +129,10 @@ export default function Home() {
           )}
         </>
       ) : (
-        <VerifyOnChain />
+        <>
+          <VerifyOnChain />
+          <AttestationChecker />
+        </>
       )}
 
       <footer className="foot">
