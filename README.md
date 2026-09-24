@@ -14,28 +14,26 @@ verifier.
 ## The 90-second path (start here)
 
 Read in order. Everything after this section is extension material: cross-chain
-attestations, the value oracle, the universal checker, and the Window 9 research appendix
-all build on the pattern below, and none of them is needed to judge it.
+attestations, the value oracle, and the universal checker all build on the pattern
+below, and none of them is needed to judge it. (A historical research appendix lives
+in `docs/history/`.)
 
-**1. Scaffold it.** One non-interactive command (pass a positional project name and/or
-`-y` so the CLI does not hang on the project-name prompt):
+**1. Scaffold it.** One non-interactive command, copy-paste ready. The positional
+project name plus `--ci` keep the CLI from hanging on prompts; this is the exact
+form that passed the gate transcript in
+[`docs/e2e/CLI-SCAFFOLD-GATE-2026-09-24.md`](./docs/e2e/CLI-SCAFFOLD-GATE-2026-09-24.md):
 
 ```bash
-npm exec --yes create-scaffold-hbar@latest -- my-provenance-swarm -y \
+npm create scaffold-hbar@latest -- my-provenance-swarm \
   --template livevnx8/scaffold-hbar-provenance-swarm \
-  --solidity-framework hardhat --package-manager npm
+  --ci --package-manager npm --solidity-framework hardhat
 ```
 
-`-y` / `--yes` accepts all defaults and skips prompts; a positional `[project-name]` (or
-`--destination <path>`) sets the output directory without asking. The scaffold creates a
-`my-provenance-swarm/` directory; `cd` into it before step 2. Add `--skip-hedera-skills`
-if you do not want the default Hedera Skills install that `--yes` enables.
+The scaffold creates a `my-provenance-swarm/` directory; `cd` into it before step 2.
 
 The default branch is `main`, so the bare `--template owner/repo` form resolves the
-template tarball directly. Pass `--solidity-framework hardhat` and `--package-manager npm`
-explicitly so the scaffold does not assume other defaults. (Written with `npm exec`
-rather than `npm create` because `create-scaffold-hbar` rewrites `npm <word>` into
-`npm run <word>` inside scaffolded markdown files.)
+template tarball directly. `--solidity-framework hardhat` and `--package-manager npm`
+match this template's tested setup; `--ci` runs the scaffold without prompting.
 
 **2. Run the demo.** No Hedera account needed. From the repo root (do not run it
 workspace-scoped: the oracle package names its script `demo:plan`; the root `demo` script
@@ -120,9 +118,9 @@ Everything here builds on the core pattern; none of it is required to judge it.
   AttestationChecker panel, which prefills real 2026-09-23 attestation IDs and prints the
   exact checker command to run; the panel does not execute the foreign-ledger read in the
   browser. See `packages/anchors/scripts/`.
-- **Window 9 research appendix.** A frozen historical research tape on Hedera testnet
-  topic `0.0.10569989`, read-only; template paths refuse to write to it. Full exhibit at
-  [`docs/window-9/appendix.md`](./docs/window-9/appendix.md).
+- **Historical research appendix.** A frozen, read-only research tape on Hedera testnet
+  topic `0.0.10569989`; template live paths refuse to write to it. Exhibit at
+  [`docs/history/window-9/appendix.md`](./docs/history/window-9/appendix.md).
 
 ## How the infrastructure fits together
 
@@ -193,13 +191,13 @@ The UI runs fully offline until you add Hedera credentials. The header badge rea
 what to configure. Click **Load coffee fixture** then **Run verification** for the happy
 path; use **Tamper attestation** for the refused path.
 
-## Frozen exhibit: Window 9 (appendix)
+## Frozen exhibit (historical appendix)
 
-Window 9 is a **historical, read-only** research tape on Hedera testnet topic
+A **historical, read-only** research tape on Hedera testnet topic
 `0.0.10569989`. It is **not** the template's live anchor topic: live anchors use
 `HEDERA_TEMPLATE_TOPIC_ID`, and writes to `0.0.10569989` from template paths are
 refused. The full exhibit (sequence table, pinned identifiers, narrative record)
-lives in the appendix: [`docs/window-9/appendix.md`](./docs/window-9/appendix.md).
+lives in the appendix: [`docs/history/window-9/appendix.md`](./docs/history/window-9/appendix.md).
 
 ## Architecture
 
@@ -361,7 +359,7 @@ chains are not accepted as finalized receipts:
 **Verified testnet transactions**
 
 Historical exhibit transactions (read-only tape on topic `0.0.10569989`) are documented in
-the appendix ([`docs/window-9/appendix.md`](./docs/window-9/appendix.md)); the genesis-NFT
+the appendix ([`docs/history/window-9/appendix.md`](./docs/history/window-9/appendix.md)); the genesis-NFT
 live run notes are at [`genesis-nft/LIVE_RUN.md`](./genesis-nft/LIVE_RUN.md).
 
 **Live template path** (2026-09-21 E2E; operator `0.0.9034044`; topic ≠ exhibit; evidence:
