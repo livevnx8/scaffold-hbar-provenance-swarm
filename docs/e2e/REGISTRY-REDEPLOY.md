@@ -1,19 +1,30 @@
 # Registry redeploy: operator-hardened ProvenanceRegistry (Hedera testnet)
 
-## Status: NOT RUN
+## Status: RUN
+
+## Deploy record
+
+- Registry address: `0xd564579399aAc654CcB5C5F768679471aa795f55`
+- Hedera contract ID: `0.0.10702506`
+- Deploy transaction: [`0xdc4b903ea7385bede39dc433023ebb0dfb44d50dfcf10c2404b3250b5e9eec5d`](https://hashscan.io/testnet/transaction/0xdc4b903ea7385bede39dc433023ebb0dfb44d50dfcf10c2404b3250b5e9eec5d)
+- Date: 2026-09-24
+- Source: main @ `9c1d70b`
+- Verification:
+  1. `operator()` matches the deployer.
+  2. `verifyReceipt` on an unknown claim returns false.
+  3. A non-operator `anchorReceipt` reverts with `not operator`.
+  4. Operator `anchorReceipt` followed by `verifyReceipt` returns true.
 
 ## Why
 
-The registry contract referenced in the README's live-identifiers table
-(`0x5Ad54d39d860Cb2c2c6A27c787eead7358137e1a`) was deployed before the
-operator hardening landed in source. The current
-`packages/hardhat/contracts/ProvenanceRegistry.sol` gates anchoring to an
-operator (`onlyOperator` on `anchorReceipt`, plus `transferOperator`); the
-deployed instance does not. Until this redeploy runs, the on-chain contract
-a reader opens on HashScan is the pre-hardening build.
+The registry contract formerly referenced in the README's live-identifiers
+table (`0x5Ad54d39d860Cb2c2c6A27c787eead7358137e1a`) was deployed before the
+operator hardening landed in source. The live testnet instance is now the
+operator-hardened redeploy recorded above. The prior address remains only as
+the superseded pre-hardening instance, a historical artifact.
 
-Honesty bound: never describe the live testnet registry as operator-gated
-until the address in the README is a deployment of the current source.
+The current `packages/hardhat/contracts/ProvenanceRegistry.sol` gates anchoring
+to an operator (`onlyOperator` on `anchorReceipt`, plus `transferOperator`).
 
 ## Authorization
 

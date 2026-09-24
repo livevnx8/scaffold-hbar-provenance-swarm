@@ -18,7 +18,7 @@
 import { JsonRpcProvider, Contract } from 'ethers';
 
 const MIRROR = 'https://testnet.mirrornode.hedera.com/api/v1';
-const REGISTRY = '0x5Ad54d39d860Cb2c2c6A27c787eead7358137e1a';
+const REGISTRY = '0xd564579399aAc654CcB5C5F768679471aa795f55';
 const FEED = '0x59bC155EB6c6C415fE43255aF66EcF0523c92B4a';
 const XRPL_RPC = 'https://s.devnet.rippletest.net:51234/';
 const SOLANA_MEMO_PROGRAM = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
