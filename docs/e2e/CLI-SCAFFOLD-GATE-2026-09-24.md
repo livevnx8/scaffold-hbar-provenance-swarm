@@ -38,9 +38,45 @@ Results (real exit codes, no pipe masking):
 
 Full logs: retained by the operator for this run.
 
-## Run 2 — pending
+## Run 2 — branch tip `94557c0` (final polish stack, pushed 2026-09-24)
 
-Re-run against the final tip (judge-fix commits: `packages/hardhat` rename,
-registry operator hardening, in-app attestation checker, docs polish) after
-the branch is pushed. The CLI resolves the template from the pushed ref, so
-the re-run must follow the push.
+Ran 2026-09-24 ~08:50 EDT from a fresh scratch directory
+(`~/workspace/scratch/gate-run2`, removed afterward), against the pushed
+branch ref (verified `origin/feat/multi-ledger-evidence-phase3` =
+`94557c0542c13857f859dbb28212f92d601db3a4` before starting).
+
+```bash
+npm create scaffold-hbar@latest -- \
+  --template "livevnx8/scaffold-hbar-provenance-swarm#feat/multi-ledger-evidence-phase3" \
+  --ci --skip-install --skip-hedera-skills \
+  --package-manager npm --solidity-framework hardhat scaffolded
+cd scaffolded
+npm install          # TMPDIR pointed under $HOME; /tmp is a 512M tmpfs
+npm run lint
+npm run build
+npm test
+npm run start &      # boot probe: one HTTP GET /
+```
+
+Finding: `npx -y create-scaffold-hbar@latest -- <flags>` silently dropped every
+flag after `--` in this environment (the CLI fell through to its interactive
+"Which starter template?" prompt, even for `--version`). The README-documented
+`npm create scaffold-hbar@latest -- <flags>` form forwarded all flags and
+scaffolded with exit 0. Verified the scaffolded tree contains the new
+`packages/hardhat` layout, confirming the template resolved the pushed
+`94557c0` tip.
+
+Results (real exit codes, no pipe masking):
+
+| Step | Result |
+|---|---|
+| Scaffold | exit 0 |
+| `npm install` | exit 0 (1,155 packages) |
+| `npm run lint` | exit 0 |
+| `npm run build` | exit 0 |
+| `npm test` | exit 0 — anchors 33/33, hardhat 9/9, nextjs 28/28, oracle 47/47, swarm 41/41, init-token 83/83 |
+| Boot (`npm run start` + HTTP GET /) | HTTP 200 |
+
+Hardhat grew from 5 to 9 tests since run 1 (the 4 operator-access-control
+tests). All other suites hold their run-1 counts. **Gate: GREEN on the final
+tip.**
