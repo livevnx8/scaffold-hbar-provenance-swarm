@@ -51,7 +51,7 @@ export default function AttestationChecker() {
       <p className="sub">
         The universal checker is the product. Paste an XRPL transaction hash or a Solana
         signature and it re-reads the attestation from public chain data, then back-checks
-        every field against Hedera. Run the command where you cloned this repo — no account,
+        every field against Hedera. Run the command where you cloned this repo: no account,
         no key, no trust in this page.
       </p>
       <div className="tabs" style={{ marginBottom: '0.9rem' }}>
@@ -86,7 +86,7 @@ export default function AttestationChecker() {
       <p className="sub" style={{ marginTop: '0.75rem' }}>
         Expect <strong>12/12</strong> checks on plain and tamper claims, <strong>13/13</strong>{' '}
         on value claims (the 13th is the Chainlink oracle check). Any FAIL means the
-        attestation does not verify — stop and report. Full script docs:{' '}
+        attestation does not verify, so stop and report. Full script docs:{' '}
         <code style={{ fontFamily: 'var(--mono)' }}>packages/anchors/scripts/README.md</code>.
       </p>
     </div>
