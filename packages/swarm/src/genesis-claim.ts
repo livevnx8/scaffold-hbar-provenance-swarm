@@ -23,7 +23,7 @@ export function genesisClaim(): ProvenanceClaim {
   const builder = 'Provenance Swarm Template';
   const buildDate = '2026-09-16';
   const statement =
-    'Genesis receipt: the provenance-swarm template verifies its first claim — itself. ' +
+    'Genesis receipt: the provenance-swarm template verifies its first claim: itself. ' +
     'Three deterministic workers checked this build; the receipt is anchored below.';
 
   return {
