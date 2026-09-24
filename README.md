@@ -388,14 +388,16 @@ live run notes are at [`genesis-nft/LIVE_RUN.md`](./genesis-nft/LIVE_RUN.md).
 | Universal checker | 100/100 checks | HCS seq 7-10 and XRPL 4/4 independently re-read from a third machine; Solana via operator packet + explorer |
 
 Live identifiers: registry
-[`0x5Ad54d39d860Cb2c2c6A27c787eead7358137e1a`](https://hashscan.io/testnet/contract/0x5Ad54d39d860Cb2c2c6A27c787eead7358137e1a),
+[`0xd564579399aAc654CcB5C5F768679471aa795f55`](https://hashscan.io/testnet/contract/0xd564579399aAc654CcB5C5F768679471aa795f55),
 topic [`0.0.10681528`](https://hashscan.io/testnet/topic/0.0.10681528), PROVC
 token [`0.0.10653074`](https://hashscan.io/testnet/token/0.0.10653074).
 
-Note: the registry source now gates anchoring to an operator
-(`packages/hardhat/contracts/ProvenanceRegistry.sol`, 9/9 Hardhat tests). The
-testnet instance above predates that hardening; redeploying it is a keyed
-testnet step and has not run yet. Procedure:
+Note: the live testnet instance above is the operator-hardened redeploy,
+deployed 2026-09-24 from main @ `9c1d70b`. Deploy transaction:
+[`0xdc4b903ea7385bede39dc433023ebb0dfb44d50dfcf10c2404b3250b5e9eec5d`](https://hashscan.io/testnet/transaction/0xdc4b903ea7385bede39dc433023ebb0dfb44d50dfcf10c2404b3250b5e9eec5d).
+The prior name `0x5Ad54d39d860Cb2c2c6A27c787eead7358137e1a` is retained only as
+the superseded pre-hardening instance (historical artifact). Procedure and
+verification record:
 [`docs/e2e/REGISTRY-REDEPLOY.md`](./docs/e2e/REGISTRY-REDEPLOY.md).
 
 ## API routes (frontend backend)
