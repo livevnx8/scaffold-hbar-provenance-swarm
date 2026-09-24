@@ -25,6 +25,11 @@ npm run deploy:testnet --workspace @provenance-swarm/hardhat
 npm run lint                       # eslint across all workspaces
 ```
 
+Clean-checkout note: the workspace packages import each other's compiled `dist/`.
+On a fresh clone run `npm run build` before any workspace-scoped `npm test`; an
+unbuilt tree fails with `MODULE_NOT_FOUND` on the workspace imports (see README
+"Quick start").
+
 ## Conventions
 
 - The swarm core stays **deterministic and offline**: same claim in, same verdict out. No network calls,

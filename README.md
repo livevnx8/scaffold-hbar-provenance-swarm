@@ -27,7 +27,8 @@ npm exec --yes create-scaffold-hbar@latest -- my-provenance-swarm -y \
 ```
 
 `-y` / `--yes` accepts all defaults and skips prompts; a positional `[project-name]` (or
-`--destination <path>`) sets the output directory without asking. Add `--skip-hedera-skills`
+`--destination <path>`) sets the output directory without asking. The scaffold creates a
+`my-provenance-swarm/` directory; `cd` into it before step 2. Add `--skip-hedera-skills`
 if you do not want the default Hedera Skills install that `--yes` enables.
 
 The default branch is `main`, so the bare `--template owner/repo` form resolves the
@@ -115,8 +116,10 @@ Everything here builds on the core pattern; none of it is required to judge it.
   exercises it against a recorded round, offline. See `packages/oracle/`.
 - **Universal checker.** One script takes any attestation, an XRPL hash or a Solana
   signature, re-reads the foreign transaction, decodes the envelope, and back-checks every
-  field against Hedera. Exposed read-only in the app's **Check a receipt** tab through the
-  AttestationChecker panel. See `packages/anchors/scripts/`.
+  field against Hedera. The app's **Check a receipt** tab exposes it through the
+  AttestationChecker panel, which prefills real 2026-09-23 attestation IDs and prints the
+  exact checker command to run; the panel does not execute the foreign-ledger read in the
+  browser. See `packages/anchors/scripts/`.
 - **Window 9 research appendix.** A frozen historical research tape on Hedera testnet
   topic `0.0.10569989`, read-only; template paths refuse to write to it. Full exhibit at
   [`docs/window-9/appendix.md`](./docs/window-9/appendix.md).
@@ -381,8 +384,8 @@ live run notes are at [`genesis-nft/LIVE_RUN.md`](./genesis-nft/LIVE_RUN.md).
 | Vera's rig (`0.0.10685865`) | HCS seq 3–6, topic `0.0.10681528` | 4/4 `verifyReceipt` true; duplicate anchor refused (409); mint not-run (`INVALID_SIGNATURE`: operator lacks supply key; not faked) |
 | Devin's rig (`0.0.9034044`) | HCS seq 7–10, topic `0.0.10681528` | 4/4 `verifyReceipt` true; NFT serials **4** and **5** minted for the two verified claims; red claims minted nothing |
 | XRPL devnet | 8/8 attestations (both rigs) | strict `tesSUCCESS`, memo byte-match |
-| Solana devnet | 4/4 attestations | memo byte-match |
-| Universal checker | 100/100 checks | independently re-verified from a third machine |
+| Solana devnet | 4/4 attestations (operator packet + explorer) | memo byte-match |
+| Universal checker | 100/100 checks | HCS seq 7-10 and XRPL 4/4 independently re-read from a third machine; Solana via operator packet + explorer |
 
 Live identifiers: registry
 [`0x5Ad54d39d860Cb2c2c6A27c787eead7358137e1a`](https://hashscan.io/testnet/contract/0x5Ad54d39d860Cb2c2c6A27c787eead7358137e1a),
@@ -392,7 +395,8 @@ token [`0.0.10653074`](https://hashscan.io/testnet/token/0.0.10653074).
 Note: the registry source now gates anchoring to an operator
 (`packages/hardhat/contracts/ProvenanceRegistry.sol`, 9/9 Hardhat tests). The
 testnet instance above predates that hardening; redeploying it is a keyed
-testnet step and has not run yet.
+testnet step and has not run yet. Procedure:
+[`docs/e2e/REGISTRY-REDEPLOY.md`](./docs/e2e/REGISTRY-REDEPLOY.md).
 
 ## API routes (frontend backend)
 
