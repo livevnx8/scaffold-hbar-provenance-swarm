@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { ethers } from 'ethers';
-import { ProvenanceClient, taskHashFor, decisionHashFor } from '@provenance-swarm/swarm';
+import { taskHashFor, decisionHashFor } from '@provenance-swarm/swarm';
 import type { ProvenanceClaim } from '@provenance-swarm/swarm';
+import { createClient } from '@/lib/client';
 
 const REGISTRY_ABI = [
   'function getAnchor(string calldata claimId) external view returns (bytes32 decisionHash, uint64 anchoredAt, address anchoredBy)',
@@ -32,8 +33,19 @@ export async function POST(req: Request) {
   }
 
   const { claimId, decisionHash, claim } = body;
-  if (!claimId || !decisionHash) {
-    return NextResponse.json({ error: 'claimId and decisionHash are required' }, { status: 400 });
+  // Both fields feed string-only operations below (startsWith/toLowerCase
+  // and the ethers call). A non-string truthy value (number, array, object)
+  // would otherwise throw a TypeError mid-route and 500. Fail closed at 400.
+  if (
+    typeof claimId !== 'string' ||
+    !claimId ||
+    typeof decisionHash !== 'string' ||
+    !decisionHash
+  ) {
+    return NextResponse.json(
+      { error: 'claimId and decisionHash are required as strings' },
+      { status: 400 },
+    );
   }
 
   let mode: 'claim-reverified' | 'hash-equality-only' = 'hash-equality-only';
@@ -47,7 +59,12 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    const { receipt } = new ProvenanceClient().verifyClaim(claim);
+    // Claim-reverified mode recomputes through the shared createClient()
+    // factory (the 4-worker oracle client), never `new ProvenanceClient()`
+    // directly: lib/client.ts mandates one worker set for /api/verify, the
+    // anchor gate, and this route, or honest Phase 2 receipts fail the
+    // posted-vs-recomputed decisionHash check (S5).
+    const { receipt } = createClient().verifyClaim(claim);
     const expectedTask = taskHashFor(claim);
     const expectedDecision = decisionHashFor(receipt.results, receipt.taskHash, receipt.version);
     if (receipt.taskHash !== expectedTask || receipt.decisionHash !== expectedDecision) {

@@ -1,0 +1,36 @@
+{
+  "name": "@provenance-swarm/oracle",
+  "version": "0.1.0",
+  "description": "Chainlink value attestation for the provenance swarm: async feed attestation at the claim boundary, pure sync worker over committed evidence.",
+  "author": "livevnx8",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "demo:plan": "tsx scripts/demo-plan.ts",
+    "check:live": "tsx scripts/live-testnet-check.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src scripts tests"
+  },
+  "dependencies": {
+    "@provenance-swarm/swarm": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.14",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=20.18.3"
+  }
+}

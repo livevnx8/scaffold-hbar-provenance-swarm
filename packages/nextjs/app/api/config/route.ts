@@ -11,5 +11,8 @@ export async function GET() {
     certificateToken: Boolean(process.env.HEDERA_CERTIFICATE_TOKEN_ID?.trim()),
     registry: Boolean(process.env.HEDERA_REGISTRY_ADDRESS?.trim()),
     network: process.env.HEDERA_NETWORK === 'mainnet' ? 'mainnet' : 'testnet',
+    // Phase 2: the oracle path is configured (pinned testnet feeds, read-only
+    // via Hashio). Live availability is proven per-request at attestation.
+    oracle: true,
   });
 }

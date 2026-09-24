@@ -1,0 +1,12 @@
+{
+  "name": "cross-chain-attestation",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Foreign-chain attestation legs + universal checker for the provenance-swarm e2e wet run.",
+  "dependencies": {
+    "@solana/web3.js": "^1.98.0",
+    "ethers": "^6.13.0",
+    "xrpl": "^4.0.0"
+  }
+}

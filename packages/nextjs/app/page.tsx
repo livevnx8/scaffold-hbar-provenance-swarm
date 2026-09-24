@@ -5,8 +5,11 @@ import ClaimForm from '../components/ClaimForm';
 import WorkerResults from '../components/WorkerResults';
 import ReceiptCard from '../components/ReceiptCard';
 import AnchorPanel from '../components/AnchorPanel';
+import EvidenceView from '../components/EvidenceView';
 import VerifyOnChain from '../components/VerifyOnChain';
+import OracleEvidencePanel from '../components/OracleEvidence';
 import type { ProvenanceClaim, ProvenanceReceipt, DoubleVerifierReport, ChainConfig } from '../lib/types';
+import type { AnchorResult } from '@provenance-swarm/anchors/client';
 
 type Tab = 'verify' | 'check';
 
@@ -19,6 +22,7 @@ export default function Home() {
   const [receipt, setReceipt] = useState<ProvenanceReceipt | null>(null);
   const [report, setReport] = useState<DoubleVerifierReport | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [anchors, setAnchors] = useState<AnchorResult[]>([]);
 
   useEffect(() => {
     fetch('/api/config')
@@ -32,6 +36,7 @@ export default function Home() {
     setError(null);
     setReceipt(null);
     setReport(null);
+    setAnchors([]);
     setClaim(nextClaim);
     try {
       const res = await fetch('/api/verify', {
@@ -45,6 +50,10 @@ export default function Home() {
       } else {
         setReceipt(data.receipt);
         setReport(data.report);
+        // The verify route echoes back the enriched claim (oracleEvidence
+        // attached). Anchor must post THAT claim — the gate re-runs the swarm
+        // on it and requires an identical decisionHash.
+        if (data.claim) setClaim(data.claim);
         setRunId((n) => n + 1);
       }
     } catch {
@@ -111,8 +120,10 @@ export default function Home() {
           {receipt && report && (
             <>
               <WorkerResults key={`w-${runId}`} results={receipt.results} />
+              {claim?.oracleEvidence && <OracleEvidencePanel evidence={claim.oracleEvidence} />}
               <ReceiptCard receipt={receipt} report={report} />
-              <AnchorPanel key={`a-${runId}`} receipt={receipt} claim={claim} />
+              <AnchorPanel key={`a-${runId}`} receipt={receipt} claim={claim} onAnchored={setAnchors} />
+              {anchors.length > 0 && <EvidenceView anchors={anchors} />}
             </>
           )}
         </>

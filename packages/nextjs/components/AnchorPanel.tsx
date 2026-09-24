@@ -3,8 +3,18 @@
 import { useEffect, useState } from 'react';
 import type { ProvenanceReceipt, ProvenanceClaim, ChainConfig, AnchorResults } from '../lib/types';
 import { hashscanTx, hashscanTopic, hashscanToken, hashscanContract } from '../lib/types';
+import { toAnchorResults } from '../lib/evidence';
+import type { AnchorResult } from '@provenance-swarm/anchors/client';
 
-export default function AnchorPanel({ receipt, claim }: { receipt: ProvenanceReceipt; claim: ProvenanceClaim | null }) {
+export default function AnchorPanel({
+  receipt,
+  claim,
+  onAnchored,
+}: {
+  receipt: ProvenanceReceipt;
+  claim: ProvenanceClaim | null;
+  onAnchored?: (anchors: AnchorResult[]) => void;
+}) {
   const [config, setConfig] = useState<ChainConfig | null>(null);
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<AnchorResults | null>(null);
@@ -38,10 +48,12 @@ export default function AnchorPanel({ receipt, claim }: { receipt: ProvenanceRec
         // 502 partial/all-failed still carries per-stage results.
         if (data && (data.hcs || data.contract || data.nft)) {
           setResults(data);
+          onAnchored?.(toAnchorResults(data, config?.network ?? 'testnet'));
         }
         setError(data.error || 'Anchoring failed');
       } else {
         setResults(data);
+        onAnchored?.(toAnchorResults(data, config?.network ?? 'testnet'));
       }
     } catch {
       setError('Network error while anchoring');

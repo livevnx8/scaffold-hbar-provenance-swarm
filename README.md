@@ -61,28 +61,78 @@ Run from the repo root:
 npm run demo
 ```
 
-(Do not run it workspace-scoped: the swarm package names its script `demo:plan`;
+(Do not run it workspace-scoped: the oracle package names its script `demo:plan`;
 the root `demo` script wires it up.)
 
-You should see **GREEN / GREEN / RED**:
+You should see **GREEN / GREEN / RED / RED-value**:
 
 1. **GREEN**: valid coffee fixture verifies.
 2. **GREEN**: a second valid lot verifies.
 3. **RED**: a tampered attestation is refused; the receipt truthfully records
    `needs_review` and the failing worker is named.
+4. **RED-value**: a claim declaring a 100x USD equivalent against its HBAR amount
+   is refused by the value-attestation worker, which recomputes the implied USD
+   value from a pinned Chainlink round (the cassette — a recorded real testnet
+   round, so the demo stays deterministic and offline) and fails the 0.5x–2x band.
 
 The demo also prints the recorded-anchor evidence block (historical HCS seq 2 + NFT serial
-#1). UI twin: load the coffee fixture, verify, then click **Tamper attestation** and verify
-again to see the refused claim explain itself.
+#1). UI twin: load the coffee fixture, verify, then click **Tamper attestation** or
+**Tamper value** and verify again to see the refused claim explain itself.
+
+## How the infrastructure fits together
+
+Five layers, each independently checkable. A judge can start at any layer and
+verify it without trusting the others.
+
+**1. The swarm (offline, deterministic).** Three worker agents check one claim
+each: origin attestation (do the hashes recompute from the supplied fields?),
+custody chain (is every handoff intact?), document hashes (are they well-formed
+64-char hex?). The coordinator binds the three verdicts into a receipt.
+`taskHash = sha256(canonical claim)` identifies the claim;
+`decisionHash = sha256(canonical {version, taskHash, workers})` binds the
+claim to the verdicts. Same claim in, same verdict out — no network, no
+randomness, no credentials. A tampered claim verifies to `needs_review` with
+the refusing worker named, and the receipt records that truthfully.
+
+**2. Hedera anchors (the trust root).** A verified receipt is anchored three
+ways on Hedera testnet: the receipt goes out as an HCS topic message, the
+`decisionHash` is stored per claim in the `ProvenanceRegistry` smart contract
+(which enforces one anchor per claim and refuses duplicates), and a
+provenance-certificate NFT (HTS) is minted for verified claims only.
+`needs_review` claims anchor the refusal but mint nothing.
+
+**3. Mirror re-verification (trust, but re-read).** The frontend re-fetches the
+HCS message from the public mirror node and byte-compares the `decisionHash`.
+Anyone with the claim ID can replay this check from any machine — the chain
+is the source of truth, not the app.
+
+**4. Cross-chain attestations (the receipt travels).** The same proof envelope
+(claim ID, verdict, decision hash, task hash, HCS sequence, consensus
+timestamp) is attested on XRPL and Solana: memo-carrying transactions whose
+payloads byte-match the Hedera anchor. Field-proven scripts live in
+`packages/anchors/scripts/`.
+
+**5. The universal checker (the product).** One script takes any attestation —
+an XRPL hash, a Solana signature — re-reads the foreign transaction, decodes
+the envelope, and back-checks every field against Hedera: HCS message,
+registry `verifyReceipt`, Chainlink oracle for value claims. 12 checks per
+attestation, 13 for value claims. If anything drifts, it fails loudly.
 
 ## Quick start (no Hedera account needed)
 
 ```bash
 npm install          # ~9 minutes on a clean machine; Node >= 20.18.3
-npm run build        # builds swarm (dist/) then nextjs; required before `dev`
-npm run demo         # GREEN / GREEN / RED offline teach-in
+npm run build        # builds swarm, then oracle, then nextjs; required before `dev`
+npm run demo         # GREEN / GREEN / RED / RED-value offline teach-in
 npm test             # workspace unit tests, all offline
 ```
+
+Build ordering matters: `nextjs` and `oracle` import the swarm package's compiled
+`dist/`, and the oracle tests import both compiled packages. The root `pretest`
+hook builds swarm + oracle before `npm test`, so always run tests from the root
+(or build swarm + oracle first) — running `npm test --workspace` on a clean
+checkout without a prior build fails with `MODULE_NOT_FOUND` on the workspace
+imports.
 
 Run the frontend:
 
@@ -201,6 +251,16 @@ Every step is deterministic: no models, no randomness, no network calls in the v
 | HTS | Provenance-certificate NFT minted per verified claim, carrying the decision hash | `packages/swarm/src/hedera.ts`, `/api/anchor` |
 | Mirror Node | Frontend re-verifies the HCS anchor via public mirror REST; every step links out to HashScan | `packages/swarm/src/mirror.ts`, `/api/mirror-verify` |
 
+### Multi-ledger evidence (scaffolding)
+
+Anchoring goes through the ledger-neutral `@provenance-swarm/anchors` package
+(`packages/anchors`): one `LedgerAnchor` interface, one explorer-URL choke point,
+and per-ledger adapters. Hedera HCS is the ported reference adapter; XRPL,
+Solana, and Base adapters are present but fail-closed ("Pending port") until
+their ports are independently verified. Every explorer link is validated —
+malformed anchor ids and unknown networks throw instead of guessing. See
+`packages/anchors/PORTING.md` and `docs/multi-ledger-anchors.md`.
+
 ### Environment
 
 Copy `packages/nextjs/.env.example` to `packages/nextjs/.env`:
@@ -279,6 +339,22 @@ Historical Window 9 exhibit (read-only tape on topic `0.0.10569989`; full notes:
 | Certificate NFT mint (HTS) | `0.0.9034044@1790000007.430466835` (serial #1) | [transaction](https://hashscan.io/testnet/transaction/0.0.9034044@1790000007.430466835) |
 | Mirror re-verify | decisionHash match on seq 3 | [mirror message](https://testnet.mirrornode.hedera.com/api/v1/topics/0.0.10649257/messages/3) |
 | Forged `/api/anchor` | tampered decisionHash → HTTP **403** | refused (no write) |
+
+**Latest runs** (2026-09-23; two independent operators; full evidence:
+[`docs/e2e/E2E-TESTNET-2026-09-23.md`](./docs/e2e/E2E-TESTNET-2026-09-23.md)):
+
+| Run | Anchors | Result |
+|---|---|---|
+| Vera's rig (`0.0.10685865`) | HCS seq 3–6, topic `0.0.10681528` | 4/4 `verifyReceipt` true; duplicate anchor refused (409); mint not-run (`INVALID_SIGNATURE` — operator lacks supply key; not faked) |
+| Devin's rig (`0.0.9034044`) | HCS seq 7–10, topic `0.0.10681528` | 4/4 `verifyReceipt` true; NFT serials **4** and **5** minted for the two verified claims; red claims minted nothing |
+| XRPL devnet | 8/8 attestations (both rigs) | strict `tesSUCCESS`, memo byte-match |
+| Solana devnet | 4/4 attestations | memo byte-match |
+| Universal checker | 100/100 checks | independently re-verified from a third machine |
+
+Live identifiers: registry
+[`0x5Ad54d39d860Cb2c2c6A27c787eead7358137e1a`](https://hashscan.io/testnet/contract/0x5Ad54d39d860Cb2c2c6A27c787eead7358137e1a),
+topic [`0.0.10681528`](https://hashscan.io/testnet/topic/0.0.10681528), PROVC
+token [`0.0.10653074`](https://hashscan.io/testnet/token/0.0.10653074).
 
 ## API routes (frontend backend)
 
