@@ -12,11 +12,15 @@ import {
   MIRROR_CASSETTE_TRUST,
   MIRROR_CASSETTE_OPERATOR_MESSAGE,
   MIRROR_CASSETTE_OPERATOR_DECISION_HASH,
-  MIRROR_CASSETTE_FOREIGN_PAYER_MESSAGE,
-  MIRROR_CASSETTE_FOREIGN_PAYER_DECISION_HASH,
+  MIRROR_CASSETTE_SECOND_OPERATOR_MESSAGE,
+  MIRROR_CASSETTE_SECOND_OPERATOR_DECISION_HASH,
+  MIRROR_CASSETTE_SYNTHETIC_STRANGER_MESSAGE,
+  TEAM_OPERATOR_ALLOWLIST,
+  TEAM_RECEIPT_TOPIC_ID,
 } from '../src/index.js';
 
-const TRUST = { operatorAccountId: '0.0.1001', topicId: '0.0.12345' };
+const OPERATOR = '0.0.1001';
+const TRUST = { allowedPayers: [OPERATOR, '0.0.1002'], topicId: '0.0.12345' };
 
 const LOOKUP = {
   network: 'testnet' as const,
@@ -36,7 +40,7 @@ function stubFetch(body: unknown, status = 200): typeof fetch {
 
 /** A mirror message body as the operator would have written it to its own topic. */
 function operatorBody(message: string): Record<string, string> {
-  return { message, payer_account_id: TRUST.operatorAccountId, topic_id: TRUST.topicId };
+  return { message, payer_account_id: OPERATOR, topic_id: TRUST.topicId };
 }
 
 function anchoredMessage(decisionHash: string): string {
@@ -115,7 +119,7 @@ describe('verifyHcsAnchorOnMirror trust boundary (payer + topic)', () => {
       TRUST,
       stubFetch({
         message: anchoredMessage(LOOKUP.expectedDecisionHash),
-        payer_account_id: TRUST.operatorAccountId,
+        payer_account_id: OPERATOR,
         topic_id: '0.0.99999',
       }),
     );
@@ -142,6 +146,32 @@ describe('verifyHcsAnchorOnMirror trust boundary (payer + topic)', () => {
     );
     expect(res.refused).toBe('topic-mismatch');
     expect(requested).toHaveLength(0);
+  });
+
+  it('accepts every payer on the allowlist, and only those', async () => {
+    for (const payer of TRUST.allowedPayers) {
+      const res = await verifyHcsAnchorOnMirror(
+        LOOKUP,
+        TRUST,
+        stubFetch({ message: anchoredMessage(LOOKUP.expectedDecisionHash), payer_account_id: payer, topic_id: TRUST.topicId }),
+      );
+      expect(res.match).toBe(true);
+    }
+    const res = await verifyHcsAnchorOnMirror(
+      LOOKUP,
+      TRUST,
+      stubFetch({ message: anchoredMessage(LOOKUP.expectedDecisionHash), payer_account_id: '0.0.10010', topic_id: TRUST.topicId }),
+    );
+    expect(res.refused).toBe('payer-mismatch');
+  });
+
+  it('refuses an empty or malformed allowlist and never fetches', async () => {
+    for (const bad of [{ ...TRUST, allowedPayers: [] }, { ...TRUST, allowedPayers: ['0.0.1', 'x'] }]) {
+      const requested: string[] = [];
+      const res = await verifyHcsAnchorOnMirror(LOOKUP, bad, mirrorCassetteFetch([], requested));
+      expect(res.refused).toBe('trust-not-configured');
+      expect(requested).toHaveLength(0);
+    }
   });
 
   it('refuses without trust config and never fetches', async () => {
@@ -191,41 +221,71 @@ describe('mirror cassette (recorded testnet responses)', () => {
     expect(res.refused).toBeUndefined();
   });
 
-  it('RED: seq 3 has a matching decisionHash but a foreign payer, so it is refused', async () => {
+  it('GREEN: seq 3, paid for by the second team operator 0.0.10685865, matches', async () => {
     const res = await verifyHcsAnchorOnMirror(
       {
         network: 'testnet',
         topicId: MIRROR_CASSETTE_TRUST.topicId,
-        sequenceNumber: MIRROR_CASSETTE_FOREIGN_PAYER_MESSAGE.sequence_number,
-        expectedDecisionHash: MIRROR_CASSETTE_FOREIGN_PAYER_DECISION_HASH,
+        sequenceNumber: MIRROR_CASSETTE_SECOND_OPERATOR_MESSAGE.sequence_number,
+        expectedDecisionHash: MIRROR_CASSETTE_SECOND_OPERATOR_DECISION_HASH,
+      },
+      MIRROR_CASSETTE_TRUST,
+      fetchImpl,
+    );
+    expect(res.match).toBe(true);
+    expect(res.payerAccountId).toBe('0.0.10685865');
+  });
+
+  it('RED: the synthetic stranger copy has a matching decisionHash but is refused', async () => {
+    expect(MIRROR_CASSETTE_SYNTHETIC_STRANGER_MESSAGE.running_hash).toMatch(/SYNTHETIC/);
+    const res = await verifyHcsAnchorOnMirror(
+      {
+        network: 'testnet',
+        topicId: MIRROR_CASSETTE_TRUST.topicId,
+        sequenceNumber: MIRROR_CASSETTE_SYNTHETIC_STRANGER_MESSAGE.sequence_number,
+        expectedDecisionHash: MIRROR_CASSETTE_OPERATOR_DECISION_HASH,
       },
       MIRROR_CASSETTE_TRUST,
       fetchImpl,
     );
     expect(res.found).toBe(true);
-    expect(res.message?.decisionHash).toBe(MIRROR_CASSETTE_FOREIGN_PAYER_DECISION_HASH);
+    expect(res.message?.decisionHash).toBe(MIRROR_CASSETTE_OPERATOR_DECISION_HASH);
     expect(res.match).toBe(false);
     expect(res.refused).toBe('payer-mismatch');
-    expect(res.payerAccountId).toBe('0.0.10685865');
+    expect(res.payerAccountId).toBe('0.0.999999999');
   });
 });
 
 describe('mirrorTrustFromEnv', () => {
-  it('reads operator id and template topic from env', () => {
-    expect(
-      mirrorTrustFromEnv({ HEDERA_OPERATOR_ID: '0.0.5', HEDERA_TEMPLATE_TOPIC_ID: '0.0.6' }),
-    ).toEqual({ operatorAccountId: '0.0.5', topicId: '0.0.6' });
+  it('defaults to the published team allowlist and topic', () => {
+    expect(mirrorTrustFromEnv({})).toEqual({
+      allowedPayers: ['0.0.9034044', '0.0.10685865'],
+      topicId: '0.0.10681528',
+    });
+    expect(TEAM_OPERATOR_ALLOWLIST).toEqual(['0.0.9034044', '0.0.10685865']);
+    expect(TEAM_RECEIPT_TOPIC_ID).toBe('0.0.10681528');
   });
-  it('falls back to the legacy topic alias', () => {
-    expect(
-      mirrorTrustFromEnv({ HEDERA_OPERATOR_ID: '0.0.5', HEDERA_PROVENANCE_TOPIC_ID: '0.0.7' }),
-    ).toEqual({ operatorAccountId: '0.0.5', topicId: '0.0.7' });
+  it('does not add HEDERA_OPERATOR_ID to the allowlist implicitly', () => {
+    expect(mirrorTrustFromEnv({ HEDERA_OPERATOR_ID: '0.0.5' })?.allowedPayers).toEqual([
+      '0.0.9034044',
+      '0.0.10685865',
+    ]);
   });
-  it('returns null when either value is missing or malformed', () => {
-    expect(mirrorTrustFromEnv({ HEDERA_OPERATOR_ID: '0.0.5' })).toBeNull();
-    expect(mirrorTrustFromEnv({ HEDERA_TEMPLATE_TOPIC_ID: '0.0.6' })).toBeNull();
+  it('reads a comma-separated allowlist and topic overrides from env', () => {
     expect(
-      mirrorTrustFromEnv({ HEDERA_OPERATOR_ID: 'x', HEDERA_TEMPLATE_TOPIC_ID: '0.0.6' }),
-    ).toBeNull();
+      mirrorTrustFromEnv({ HEDERA_MIRROR_ALLOWED_PAYERS: ' 0.0.5, 0.0.8 ', HEDERA_MIRROR_TOPIC_ID: '0.0.6' }),
+    ).toEqual({ allowedPayers: ['0.0.5', '0.0.8'], topicId: '0.0.6' });
+  });
+  it('falls back to the template topic, then the legacy alias', () => {
+    expect(mirrorTrustFromEnv({ HEDERA_TEMPLATE_TOPIC_ID: '0.0.6' })?.topicId).toBe('0.0.6');
+    expect(mirrorTrustFromEnv({ HEDERA_PROVENANCE_TOPIC_ID: '0.0.7' })?.topicId).toBe('0.0.7');
+    expect(
+      mirrorTrustFromEnv({ HEDERA_MIRROR_TOPIC_ID: '0.0.9', HEDERA_TEMPLATE_TOPIC_ID: '0.0.6' })?.topicId,
+    ).toBe('0.0.9');
+  });
+  it('returns null (fail closed) when a configured value is malformed', () => {
+    expect(mirrorTrustFromEnv({ HEDERA_MIRROR_ALLOWED_PAYERS: '0.0.5,x' })).toBeNull();
+    expect(mirrorTrustFromEnv({ HEDERA_MIRROR_ALLOWED_PAYERS: ' , ' })).toBeNull();
+    expect(mirrorTrustFromEnv({ HEDERA_MIRROR_TOPIC_ID: 'topic' })).toBeNull();
   });
 });

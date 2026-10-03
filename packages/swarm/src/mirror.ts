@@ -8,10 +8,20 @@
  *
  * Trust boundary: a decisionHash match alone proves nothing, because template
  * topics are created with a null submit key and anyone can append a copy of a
- * hash. The check therefore also requires the message's topic_id and
- * payer_account_id to equal the operator topic and operator account taken from
- * server config (MirrorTrust), never from the receipt or the request.
+ * hash. The check therefore also requires the message's topic_id to equal the
+ * receipt topic and its payer_account_id to be on the operator allowlist, both
+ * taken from server config (MirrorTrust), never from the receipt or the request.
  */
+
+/**
+ * The published team operator allowlist: the accounts that anchored this
+ * template's live testnet receipts. Used when HEDERA_MIRROR_ALLOWED_PAYERS is
+ * unset. Forks running their own operator must set that variable.
+ */
+export const TEAM_OPERATOR_ALLOWLIST: readonly string[] = Object.freeze(['0.0.9034044', '0.0.10685865']);
+
+/** The published team receipt topic, used when no topic is configured. */
+export const TEAM_RECEIPT_TOPIC_ID = '0.0.10681528';
 
 export type HederaNetworkName = 'testnet' | 'mainnet';
 
@@ -42,8 +52,8 @@ export interface HcsAnchorLookup {
  * topic make a mirror match meaningful.
  */
 export interface MirrorTrust {
-  /** Hedera account id (shard.realm.num) that must have paid for the message. */
-  operatorAccountId: string;
+  /** Hedera account ids (shard.realm.num); the message's payer must be one of them. */
+  allowedPayers: readonly string[];
   /** The operator's receipt topic (shard.realm.num). */
   topicId: string;
 }
@@ -57,7 +67,7 @@ export type MirrorRefusal =
 export interface MirrorVerification {
   /** Whether the mirror node returned a message for this sequence number. */
   found: boolean;
-  /** Whether the anchored decisionHash matches AND the message came from the operator on the operator topic. */
+  /** Whether the anchored decisionHash matches AND the message was paid for by an allowlisted operator on the receipt topic. */
   match: boolean;
   /** The decoded topic message, when found and parseable. */
   message?: Record<string, unknown>;
@@ -73,18 +83,37 @@ export interface MirrorVerification {
 const ENTITY_ID = /^\d+\.\d+\.\d+$/;
 const SEQUENCE = /^[1-9]\d*$/;
 
+function isValidTrust(trust: MirrorTrust | null | undefined): trust is MirrorTrust {
+  return Boolean(
+    trust &&
+      ENTITY_ID.test(trust.topicId) &&
+      Array.isArray(trust.allowedPayers) &&
+      trust.allowedPayers.length > 0 &&
+      trust.allowedPayers.every(p => ENTITY_ID.test(p)),
+  );
+}
+
 /**
- * Build the trust anchor from server env: the operator account and the
- * operator's live topic. Returns null when either is missing or malformed, so
- * callers fail closed instead of trusting request input.
+ * Build the trust anchor from server env, never from request input:
+ *   - allowedPayers: HEDERA_MIRROR_ALLOWED_PAYERS (comma-separated account ids),
+ *     default TEAM_OPERATOR_ALLOWLIST.
+ *   - topicId: HEDERA_MIRROR_TOPIC_ID, else HEDERA_TEMPLATE_TOPIC_ID (legacy
+ *     alias HEDERA_PROVENANCE_TOPIC_ID), default TEAM_RECEIPT_TOPIC_ID.
+ * Returns null when a configured value is malformed, so callers fail closed
+ * instead of silently widening or guessing the allowlist.
  */
 export function mirrorTrustFromEnv(env: NodeJS.ProcessEnv = process.env): MirrorTrust | null {
-  const operatorAccountId = env.HEDERA_OPERATOR_ID?.trim();
+  const rawPayers = env.HEDERA_MIRROR_ALLOWED_PAYERS?.trim();
+  const allowedPayers = rawPayers
+    ? rawPayers.split(',').map(p => p.trim()).filter(Boolean)
+    : [...TEAM_OPERATOR_ALLOWLIST];
   const topicId =
-    env.HEDERA_TEMPLATE_TOPIC_ID?.trim() || env.HEDERA_PROVENANCE_TOPIC_ID?.trim();
-  if (!operatorAccountId || !topicId) return null;
-  if (!ENTITY_ID.test(operatorAccountId) || !ENTITY_ID.test(topicId)) return null;
-  return { operatorAccountId, topicId };
+    env.HEDERA_MIRROR_TOPIC_ID?.trim() ||
+    env.HEDERA_TEMPLATE_TOPIC_ID?.trim() ||
+    env.HEDERA_PROVENANCE_TOPIC_ID?.trim() ||
+    TEAM_RECEIPT_TOPIC_ID;
+  const trust = { allowedPayers, topicId };
+  return isValidTrust(trust) ? trust : null;
 }
 
 /** Public REST URL for a topic message — safe to link in the UI. */
@@ -123,13 +152,13 @@ export async function verifyHcsAnchorOnMirror(
   trust: MirrorTrust | null,
   fetchImpl: typeof fetch = fetch,
 ): Promise<MirrorVerification> {
-  if (!trust || !ENTITY_ID.test(trust.operatorAccountId) || !ENTITY_ID.test(trust.topicId)) {
+  if (!isValidTrust(trust)) {
     return {
       found: false,
       match: false,
       refused: 'trust-not-configured',
       error:
-        'Mirror trust is not configured: set HEDERA_OPERATOR_ID and HEDERA_TEMPLATE_TOPIC_ID on the server',
+        'Mirror trust is not configured: HEDERA_MIRROR_ALLOWED_PAYERS / HEDERA_MIRROR_TOPIC_ID are malformed on the server',
     };
   }
   const { network, sequenceNumber, expectedDecisionHash } = lookup;
@@ -180,7 +209,7 @@ export async function verifyHcsAnchorOnMirror(
       error: `Mirror message topic ${topicId ?? 'missing'} is not the operator topic ${trust.topicId}`,
     };
   }
-  if (payerAccountId !== trust.operatorAccountId) {
+  if (payerAccountId === undefined || !trust.allowedPayers.includes(payerAccountId)) {
     return {
       found: true,
       match: false,
@@ -188,7 +217,9 @@ export async function verifyHcsAnchorOnMirror(
       topicId,
       message: tryDecode(body.message),
       refused: 'payer-mismatch',
-      error: `Message was paid for by ${payerAccountId ?? 'unknown'}, not the operator ${trust.operatorAccountId}`,
+      error:
+        `Message was paid for by ${payerAccountId ?? 'unknown'}, which is not on the operator ` +
+        `allowlist (${trust.allowedPayers.join(', ')})`,
     };
   }
   if (!body.message) {

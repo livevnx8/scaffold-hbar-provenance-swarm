@@ -43,14 +43,21 @@ export type {
   AnchorRecord,
   MintRecord,
 } from './hedera.js';
-export { verifyHcsAnchorOnMirror, mirrorMessageUrl, mirrorTrustFromEnv } from './mirror.js';
+export {
+  verifyHcsAnchorOnMirror,
+  mirrorMessageUrl,
+  mirrorTrustFromEnv,
+  TEAM_OPERATOR_ALLOWLIST,
+  TEAM_RECEIPT_TOPIC_ID,
+} from './mirror.js';
 export type { HcsAnchorLookup, MirrorVerification, MirrorTrust, MirrorRefusal, HederaNetworkName } from './mirror.js';
 export {
   MIRROR_CASSETTE_TRUST,
   MIRROR_CASSETTE_OPERATOR_MESSAGE,
   MIRROR_CASSETTE_OPERATOR_DECISION_HASH,
-  MIRROR_CASSETTE_FOREIGN_PAYER_MESSAGE,
-  MIRROR_CASSETTE_FOREIGN_PAYER_DECISION_HASH,
+  MIRROR_CASSETTE_SECOND_OPERATOR_MESSAGE,
+  MIRROR_CASSETTE_SECOND_OPERATOR_DECISION_HASH,
+  MIRROR_CASSETTE_SYNTHETIC_STRANGER_MESSAGE,
   mirrorCassetteFetch,
 } from './mirror-cassette.js';
 export type { MirrorCassetteMessage } from './mirror-cassette.js';

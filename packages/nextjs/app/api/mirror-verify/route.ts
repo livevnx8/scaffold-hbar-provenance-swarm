@@ -4,11 +4,13 @@ import { verifyHcsAnchorOnMirror, mirrorTrustFromEnv } from '@provenance-swarm/s
 /**
  * Re-read an HCS anchor from the public mirror node.
  *
- * The operator account and operator topic come from server config only
- * (HEDERA_OPERATOR_ID, HEDERA_TEMPLATE_TOPIC_ID). A request-supplied topicId is
- * accepted only if it equals the operator topic; a message paid for by any
- * other account is refused even when its decisionHash matches, because the
- * template topic has a null submit key and anyone can append to it.
+ * The operator allowlist and receipt topic come from server config only
+ * (HEDERA_MIRROR_ALLOWED_PAYERS, HEDERA_MIRROR_TOPIC_ID / HEDERA_TEMPLATE_TOPIC_ID),
+ * defaulting to the published team allowlist (0.0.9034044, 0.0.10685865) and
+ * topic 0.0.10681528. A request-supplied topicId is accepted only if it equals
+ * the receipt topic; a message paid for by any account outside the allowlist is
+ * refused even when its decisionHash matches, because the topic has a null
+ * submit key and anyone can append to it.
  */
 export async function POST(req: Request) {
   let body: {
@@ -44,8 +46,8 @@ export async function POST(req: Request) {
         match: false,
         refused: 'trust-not-configured',
         error:
-          'Mirror check needs HEDERA_OPERATOR_ID and HEDERA_TEMPLATE_TOPIC_ID set on the server; ' +
-          'request-supplied topics are never trusted.',
+          'Mirror trust config is malformed: HEDERA_MIRROR_ALLOWED_PAYERS must be comma-separated ' +
+          'account ids and the topic must be shard.realm.num; request-supplied values are never trusted.',
       },
       { status: 503 },
     );

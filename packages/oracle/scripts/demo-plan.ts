@@ -34,8 +34,9 @@ import {
   MIRROR_CASSETTE_TRUST,
   MIRROR_CASSETTE_OPERATOR_MESSAGE,
   MIRROR_CASSETTE_OPERATOR_DECISION_HASH,
-  MIRROR_CASSETTE_FOREIGN_PAYER_MESSAGE,
-  MIRROR_CASSETTE_FOREIGN_PAYER_DECISION_HASH,
+  MIRROR_CASSETTE_SECOND_OPERATOR_MESSAGE,
+  MIRROR_CASSETTE_SECOND_OPERATOR_DECISION_HASH,
+  MIRROR_CASSETTE_SYNTHETIC_STRANGER_MESSAGE,
 } from '@provenance-swarm/swarm';
 import type {
   ProvenanceClaim,
@@ -84,7 +85,7 @@ async function main(): Promise<void> {
     'Demo plan: GREEN (fixture) -> GREEN (second lot) -> RED (tampered attestation) ' +
       '-> RED-value (100x declared value, cassette evidence) ' +
       '-> RED-oracle (forged round, recorded getRoundData) ' +
-      '-> RED-mirror (foreign payer on the operator topic, recorded mirror responses)',
+      '-> RED-mirror (team operators match on recorded responses; a synthetic stranger copy is refused)',
   );
 
   // GREEN 1
@@ -164,17 +165,19 @@ async function main(): Promise<void> {
 
   // RED-mirror — the anchor topic has a null submit key, so anyone can post a
   // message carrying a copied decisionHash. The mirror re-check pins the
-  // operator account and topic (server config; here the cassette trust) and
-  // replays two recorded testnet mirror responses: the operator-paid message
-  // matches, the foreign-payer message is refused although its hash matches.
-  console.log('\n=== RED-mirror: Mirror re-check pins operator payer + topic (recorded responses) ===');
+  // operator allowlist and topic (server config; here the published team
+  // defaults). Two recorded testnet responses from the two team operators
+  // match; a clearly labelled SYNTHETIC stranger copy of seq 7 is refused
+  // although its hash matches.
+  console.log('\n=== RED-mirror: Mirror re-check pins operator allowlist + topic ===');
   console.log(
-    `  trust (server config): operator ${MIRROR_CASSETTE_TRUST.operatorAccountId}, topic ${MIRROR_CASSETTE_TRUST.topicId}`,
+    `  trust (server config): operators ${MIRROR_CASSETTE_TRUST.allowedPayers.join(', ')}, topic ${MIRROR_CASSETTE_TRUST.topicId}`,
   );
   const mirrorFetch = mirrorCassetteFetch();
-  for (const [msg, hash] of [
-    [MIRROR_CASSETTE_OPERATOR_MESSAGE, MIRROR_CASSETTE_OPERATOR_DECISION_HASH],
-    [MIRROR_CASSETTE_FOREIGN_PAYER_MESSAGE, MIRROR_CASSETTE_FOREIGN_PAYER_DECISION_HASH],
+  for (const [msg, hash, label] of [
+    [MIRROR_CASSETTE_OPERATOR_MESSAGE, MIRROR_CASSETTE_OPERATOR_DECISION_HASH, 'recorded'],
+    [MIRROR_CASSETTE_SECOND_OPERATOR_MESSAGE, MIRROR_CASSETTE_SECOND_OPERATOR_DECISION_HASH, 'recorded'],
+    [MIRROR_CASSETTE_SYNTHETIC_STRANGER_MESSAGE, MIRROR_CASSETTE_OPERATOR_DECISION_HASH, 'SYNTHETIC stranger copy'],
   ] as const) {
     const res = await verifyHcsAnchorOnMirror(
       {
@@ -188,7 +191,7 @@ async function main(): Promise<void> {
     );
     const anchored = typeof res.message?.decisionHash === 'string' ? res.message.decisionHash : 'n/a';
     console.log(
-      `  [${res.match ? 'PASS' : 'FAIL'}] seq ${msg.sequence_number} payer ${res.payerAccountId ?? 'n/a'}: ` +
+      `  [${res.match ? 'PASS' : 'FAIL'}] (${label}) seq ${msg.sequence_number} payer ${res.payerAccountId ?? 'n/a'}: ` +
         (res.match ? 'match' : `refused (${res.refused ?? 'hash-mismatch'})`),
     );
     console.log(`         anchored decisionHash ${anchored === 'n/a' ? 'not read' : anchored.slice(0, 16) + '…'} expected ${hash.slice(0, 16)}…`);
@@ -196,7 +199,7 @@ async function main(): Promise<void> {
   }
   console.log(
     '(RED-mirror) A matching hash on a public topic is not proof: the message must be ' +
-      'paid for by the operator account on the operator topic, both taken from server config.',
+      'paid for by an allowlisted operator on the receipt topic, both taken from server config.',
   );
 
   console.log('\n=== Recorded-anchor evidence (historical exhibit; read-only) ===');
