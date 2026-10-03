@@ -114,10 +114,18 @@ export default function AnchorPanel({
           The server refuses anchors without a claim it can re-verify.
         </div>
       )}
-      {config?.anchorTokenRequired && (
+      {config?.hedera && !config?.anchorEnabled && (
         <div className="notice">
-          This server requires an anchor token (ANCHOR_API_TOKEN) because anchoring spends the
-          operator&apos;s HBAR.{' '}
+          Anchoring is disabled on this server. It spends the operator&apos;s HBAR, so it stays off
+          until <code>ANCHOR_API_TOKEN</code> (16+ characters) is set in{' '}
+          <code>packages/nextjs/.env</code>, and <code>ANCHOR_API_ENABLED=false</code> keeps it off on
+          public deployments.
+        </div>
+      )}
+      {config?.anchorEnabled && (
+        <div className="notice">
+          Anchoring spends the operator&apos;s HBAR, so this server requires its anchor token
+          (<code>ANCHOR_API_TOKEN</code>).{' '}
           <input
             type="password"
             value={anchorToken}
@@ -281,7 +289,7 @@ export default function AnchorPanel({
       </div>
 
       <div className="btnrow">
-        <button className="btn" onClick={anchor} disabled={busy || !config?.hedera}>
+        <button className="btn" onClick={anchor} disabled={busy || !config?.hedera || !config?.anchorEnabled || !anchorToken}>
           {busy ? (
             <>
               <span className="spin" /> Anchoring…

@@ -68,12 +68,17 @@ type StageResult = { ok: boolean; skipped?: string; error?: string; [k: string]:
 
 /**
  * WARNING: this route signs with the operator key and spends its HBAR on every
- * successful call. Set ANCHOR_API_TOKEN on any deployment others can reach.
+ * successful call. It is disabled unless ANCHOR_API_TOKEN is set (16+ chars),
+ * and ANCHOR_API_ENABLED=false turns it off entirely (see lib/anchorAuth.ts).
+ * Auth runs first: nothing is parsed, read or written for an unauthorized call.
  */
 export async function POST(req: Request) {
   const auth = anchorAuth(req.headers.get('authorization'));
   if (!auth.ok) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
+    return NextResponse.json(
+      { error: auth.error, disabled: auth.disabled },
+      { status: auth.status },
+    );
   }
 
   let body: { receipt?: ProvenanceReceipt; claim?: ProvenanceClaim };
