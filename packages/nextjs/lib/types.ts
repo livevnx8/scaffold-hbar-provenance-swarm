@@ -18,6 +18,10 @@ export interface ChainConfig {
   registry: boolean;
   network: 'testnet' | 'mainnet';
   oracle: boolean;
+  /** False unless the server sets ANCHOR_API_TOKEN and does not set ANCHOR_API_ENABLED=false. */
+  anchorEnabled?: boolean;
+  /** Always true when anchoring is enabled; the UI asks for the token. */
+  anchorTokenRequired?: boolean;
 }
 
 export interface AnchorResults {

@@ -3,7 +3,7 @@
 ## What this is
 
 A Scaffold-HBAR external template: verifiable supply-chain provenance via a deterministic agent swarm,
-anchored on Hedera. Forkable via `npm create scaffold-hbar@latest -- my-provenance-swarm --template livevnx8/scaffold-hbar-provenance-swarm --ci --solidity-framework hardhat --package-manager npm` (positional project name plus `--ci` keeps it non-interactive; explicit flags match this template's tested npm+hardhat setup).
+anchored on Hedera. Forkable via `npx create-scaffold-hbar@latest my-provenance-swarm --template livevnx8/scaffold-hbar-provenance-swarm --ci --solidity-framework hardhat --package-manager npm` (positional project name plus `--ci` keeps it non-interactive; explicit flags match this template's tested npm+hardhat setup).
 
 ## Layout
 
@@ -17,18 +17,19 @@ anchored on Hedera. Forkable via `npm create scaffold-hbar@latest -- my-provenan
 
 ```bash
 npm install
+npm run build                      # required once: workspaces import each other's dist/
 npm run demo                       # offline swarm demo (no credentials)
-npm test                           # every workspace suite
-npm test --workspace @provenance-swarm/swarm
-npm test --workspace @provenance-swarm/hardhat
+npm run test                       # every workspace suite
+npm run test --workspace @provenance-swarm/swarm
+npm run test --workspace @provenance-swarm/hardhat
 npm run deploy:testnet --workspace @provenance-swarm/hardhat
 npm run lint                       # eslint across all workspaces
 ```
 
 Clean-checkout note: the workspace packages import each other's compiled `dist/`.
-On a fresh clone run `npm run build` before any workspace-scoped `npm test`; an
+On a fresh clone run `npm run build` before any workspace-scoped `npm run test`; an
 unbuilt tree fails with `MODULE_NOT_FOUND` on the workspace imports (see README
-"Quick start").
+"Run it").
 
 ## Conventions
 
@@ -43,6 +44,16 @@ unbuilt tree fails with `MODULE_NOT_FOUND` on the workspace imports (see README
 - The double-verifier's two check groups (A: hash integrity, B: policy) must both pass;
   disagreement is reject-on-any-fail. The groups are not independent verifiers; both run
   inside the one `verifyProvenanceReceipt` call. Never claim multi-party independence.
+- `POST /api/anchor` spends operator HBAR and fails closed: disabled (503) unless
+  `ANCHOR_API_TOKEN` (16+ chars) is set, `ANCHOR_API_ENABLED=false` disables it entirely,
+  and callers send `Authorization: Bearer <token>`. Committed Chainlink rounds are re-read
+  on-chain (`oracleGate`) before any write; never trust client-supplied price data.
+- The mirror re-check trusts only the operator allowlist and receipt topic from server env
+  (`HEDERA_MIRROR_ALLOWED_PAYERS`, `HEDERA_MIRROR_TOPIC_ID`; defaults `0.0.9034044,0.0.10685865`
+  and `0.0.10681528`), never request or receipt fields.
+- Scaffold CLI note: with npm, create-scaffold-hbar rewrites every `npm <word>` in text files
+  to `npm run <word>` (except run/install/exec/ci). Write `npm run test`, not the short form,
+  and use `npx create-scaffold-hbar@latest` for the scaffold one-liner.
 - Frontend talks to Hedera through the Hashio JSON-RPC endpoints and mirror-node REST, matching the
   scaffold-hbar baseline configuration. No private keys in the browser; signing stays server-side.
 

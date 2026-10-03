@@ -29,12 +29,16 @@
         {
           "steps": [
             {
+              "command": "npm run build",
+              "label": "Build the workspace packages (required once, before demo or dev)"
+            },
+            {
               "command": "npm run demo",
               "label": "Run the offline demo"
             },
             {
               "label": "Copy the env file",
-              "text": "packages/nextjs/.env.example \u2192 packages/nextjs/.env, then add your Hedera testnet account"
+              "text": "packages/nextjs/.env.example \u2192 packages/nextjs/.env, then add your Hedera testnet account and an ANCHOR_API_TOKEN (16+ characters; anchoring stays disabled without it)"
             },
             {
               "command": "npm run deploy:testnet --workspace=@provenance-swarm/hardhat",

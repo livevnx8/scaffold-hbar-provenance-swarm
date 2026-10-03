@@ -19,6 +19,7 @@ export default function AnchorPanel({
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<AnchorResults | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [anchorToken, setAnchorToken] = useState('');
   const [mirrorBusy, setMirrorBusy] = useState(false);
   const [mirrorResult, setMirrorResult] = useState<{
     found: boolean;
@@ -40,7 +41,10 @@ export default function AnchorPanel({
     try {
       const res = await fetch('/api/anchor', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(anchorToken ? { Authorization: `Bearer ${anchorToken}` } : {}),
+        },
         body: JSON.stringify({ receipt, claim }),
       });
       const data = await res.json();
@@ -108,6 +112,28 @@ export default function AnchorPanel({
         <div className="notice">
           No claim is attached to this receipt in the UI session. Re-run verification before anchoring.
           The server refuses anchors without a claim it can re-verify.
+        </div>
+      )}
+      {config?.hedera && !config?.anchorEnabled && (
+        <div className="notice">
+          Anchoring is disabled on this server. It spends the operator&apos;s HBAR, so it stays off
+          until <code>ANCHOR_API_TOKEN</code> (16+ characters) is set in{' '}
+          <code>packages/nextjs/.env</code>, and <code>ANCHOR_API_ENABLED=false</code> keeps it off on
+          public deployments.
+        </div>
+      )}
+      {config?.anchorEnabled && (
+        <div className="notice">
+          Anchoring spends the operator&apos;s HBAR, so this server requires its anchor token
+          (<code>ANCHOR_API_TOKEN</code>).{' '}
+          <input
+            type="password"
+            value={anchorToken}
+            onChange={(e) => setAnchorToken(e.target.value)}
+            placeholder="Anchor API token"
+            aria-label="Anchor API token"
+            autoComplete="off"
+          />
         </div>
       )}
       {error && <div className="notice error">{error}</div>}
@@ -263,7 +289,7 @@ export default function AnchorPanel({
       </div>
 
       <div className="btnrow">
-        <button className="btn" onClick={anchor} disabled={busy || !config?.hedera}>
+        <button className="btn" onClick={anchor} disabled={busy || !config?.hedera || !config?.anchorEnabled || !anchorToken}>
           {busy ? (
             <>
               <span className="spin" /> Anchoring…

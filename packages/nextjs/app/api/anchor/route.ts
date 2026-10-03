@@ -9,6 +9,9 @@ import {
 import { gateReceipt } from '@/lib/anchorGate';
 import { registryGuard } from '@/lib/registryGuard';
 import { mintSkipReason } from '@/lib/mintGate';
+import { oracleGate } from '@/lib/oracleGate';
+import { anchorAuth } from '@/lib/anchorAuth';
+import { registryPrecheck } from '@/lib/registryPrecheck';
 import type {
   ProvenanceReceipt,
   ProvenanceClaim,
@@ -17,6 +20,7 @@ import type {
 
 const REGISTRY_ABI = [
   'function anchorReceipt(string calldata claimId, bytes32 decisionHash) external',
+  'function getAnchor(string calldata claimId) external view returns (bytes32 decisionHash, uint64 anchoredAt, address anchoredBy)',
 ];
 
 function toBytes32(hex: string): string {
@@ -62,7 +66,21 @@ function liveTopicId(): string | undefined {
 
 type StageResult = { ok: boolean; skipped?: string; error?: string; [k: string]: unknown };
 
+/**
+ * WARNING: this route signs with the operator key and spends its HBAR on every
+ * successful call. It is disabled unless ANCHOR_API_TOKEN is set (16+ chars),
+ * and ANCHOR_API_ENABLED=false turns it off entirely (see lib/anchorAuth.ts).
+ * Auth runs first: nothing is parsed, read or written for an unauthorized call.
+ */
 export async function POST(req: Request) {
+  const auth = anchorAuth(req.headers.get('authorization'));
+  if (!auth.ok) {
+    return NextResponse.json(
+      { error: auth.error, disabled: auth.disabled },
+      { status: auth.status },
+    );
+  }
+
   let body: { receipt?: ProvenanceReceipt; claim?: ProvenanceClaim };
   try {
     body = await req.json();
@@ -80,6 +98,16 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: gate.error, checks: 'checks' in gate ? gate.checks : undefined },
       { status: gate.status },
+    );
+  }
+
+  // Committed Chainlink evidence is re-read on-chain before any write: the
+  // forge gate above only proves the evidence is internally consistent.
+  const oracle = await oracleGate(claim!);
+  if (!oracle.ok) {
+    return NextResponse.json(
+      { ok: false, error: oracle.error, oracle: oracle.recheck },
+      { status: oracle.status },
     );
   }
 
@@ -141,6 +169,29 @@ export async function POST(req: Request) {
   }
   const registryAddress = guard.address;
 
+  const rpcUrl = process.env.HEDERA_RPC_URL || 'https://testnet.hashio.io/api';
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
+
+  // Duplicates are refused here, before the HCS message is paid for. The
+  // registry write below still enforces one-anchor-per-claim on-chain.
+  const precheck = await registryPrecheck(
+    new ethers.Contract(registryAddress, REGISTRY_ABI, provider) as unknown as {
+      getAnchor(claimId: string): Promise<unknown>;
+    },
+    receipt.claimId,
+  );
+  if (!precheck.ok) {
+    try {
+      anchor.close();
+    } catch {
+      /* ignore */
+    }
+    return NextResponse.json(
+      { ok: false, error: precheck.error, duplicate: precheck.duplicate, ...out },
+      { status: precheck.status },
+    );
+  }
+
   // 1 — HCS anchor
   try {
     const anchored = await anchor.anchorReceipt(receipt);
@@ -161,8 +212,6 @@ export async function POST(req: Request) {
   // 2 — registry contract (required: enforced above, so this branch always runs)
   {
     try {
-      const rpcUrl = process.env.HEDERA_RPC_URL || 'https://testnet.hashio.io/api';
-      const provider = new ethers.JsonRpcProvider(rpcUrl);
       // Registry path is ECDSA-only (ethers Wallet). Documented in README;
       // still normalize via parseOperatorKey so DER / 0x / raw hex parse, but
       // ethers expects secp256k1.

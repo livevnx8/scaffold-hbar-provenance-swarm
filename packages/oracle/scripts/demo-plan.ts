@@ -7,6 +7,12 @@
  *   3. Tampered attestation              -> needs_review (RED) with per-worker refusal
  *   4. 100x declared value vs evidence   -> needs_review (RED-value) via the
  *      value-attestation worker on the pinned cassette round
+ *   5. Forged Chainlink round            -> sync worker says verified, the
+ *      anchor-time getRoundData re-check (recorded response) refuses it
+ *      (RED-oracle), so /api/anchor returns 403 before any write
+ *   6. Mirror re-check, foreign payer    -> refused (RED-mirror): a recorded
+ *      mirror response whose decisionHash matches but whose payer_account_id
+ *      is not the operator is refused; the operator-paid message matches
  *
  * Demo determinism: the value act uses fixtureOracleEvidence() — a pinned
  * recorded round — attached to the claim before verifyClaim. attestClaimValue
@@ -23,13 +29,29 @@ import {
   fixtureClaim,
   fixtureValueClaim,
   FIXTURE_VALUE_USD_CENTS,
+  verifyHcsAnchorOnMirror,
+  mirrorCassetteFetch,
+  MIRROR_CASSETTE_TRUST,
+  MIRROR_CASSETTE_OPERATOR_MESSAGE,
+  MIRROR_CASSETTE_OPERATOR_DECISION_HASH,
+  MIRROR_CASSETTE_SECOND_OPERATOR_MESSAGE,
+  MIRROR_CASSETTE_SECOND_OPERATOR_DECISION_HASH,
+  MIRROR_CASSETTE_SYNTHETIC_STRANGER_MESSAGE,
 } from '@provenance-swarm/swarm';
 import type {
   ProvenanceClaim,
   ProvenanceReceipt,
   DoubleVerifierReport,
 } from '@provenance-swarm/swarm';
-import { createClient, fixtureOracleEvidence } from '../src/index.js';
+import {
+  createClient,
+  fixtureOracleEvidence,
+  fixtureValueClaimWithEvidence,
+  fixtureForgedValueClaim,
+  recheckOracleEvidenceOnChain,
+  RecordedPriceFeed,
+  CHAINLINK_RECORDED_GET_ROUND,
+} from '../src/index.js';
 
 function printReceipt(
   label: string,
@@ -57,11 +79,13 @@ function printReceipt(
   }
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const client = createClient();
   console.log(
     'Demo plan: GREEN (fixture) -> GREEN (second lot) -> RED (tampered attestation) ' +
-      '-> RED-value (100x declared value, cassette evidence)',
+      '-> RED-value (100x declared value, cassette evidence) ' +
+      '-> RED-oracle (forged round, recorded getRoundData) ' +
+      '-> RED-mirror (team operators match on recorded responses; a synthetic stranger copy is refused)',
   );
 
   // GREEN 1
@@ -114,6 +138,70 @@ function main(): void {
       'load-bearing: a 100x declared value cannot silently become verified.',
   );
 
+  // RED-oracle — a caller posting straight to /api/anchor can commit a forged
+  // "live" round whose answer is inflated to match an inflated declared value.
+  // The sync worker cannot tell (the evidence is self-consistent); the anchor
+  // gate re-reads getRoundData(roundId) and refuses. A recorded getRoundData
+  // response stands in for the chain so the demo stays offline.
+  console.log('\n=== RED-oracle: Forged Chainlink round vs on-chain getRoundData (recorded response) ===');
+  const recordedFeed = () => new RecordedPriceFeed([CHAINLINK_RECORDED_GET_ROUND]);
+  for (const [label, c] of [
+    ['honest cassette evidence', fixtureValueClaimWithEvidence()],
+    ['forged round (100x answer, relabelled live)', fixtureForgedValueClaim()],
+  ] as const) {
+    const sync = client.verifyClaim(c).receipt;
+    const recheck = await recheckOracleEvidenceOnChain(c, recordedFeed);
+    console.log(`  ${label}: sync worker verdict=${sync.verdict}, decisionHash ${sync.decisionHash.slice(0, 16)}…`);
+    console.log(
+      `  [${recheck.ok ? 'PASS' : 'FAIL'}] getRoundData(${recheck.checks[0]?.roundId}) re-check: ` +
+        (recheck.ok ? 'matches the chain' : `refused (${recheck.failure}) -> /api/anchor 403, nothing written`),
+    );
+    for (const m of recheck.checks.flatMap((x) => x.mismatches)) console.log(`         - ${m}`);
+  }
+  console.log(
+    '(RED-oracle) Self-consistent evidence is not enough: every committed round must match ' +
+      'getRoundData on the pinned Chainlink proxy before anything is anchored.',
+  );
+
+  // RED-mirror — the anchor topic has a null submit key, so anyone can post a
+  // message carrying a copied decisionHash. The mirror re-check pins the
+  // operator allowlist and topic (server config; here the published team
+  // defaults). Two recorded testnet responses from the two team operators
+  // match; a clearly labelled SYNTHETIC stranger copy of seq 7 is refused
+  // although its hash matches.
+  console.log('\n=== RED-mirror: Mirror re-check pins operator allowlist + topic ===');
+  console.log(
+    `  trust (server config): operators ${MIRROR_CASSETTE_TRUST.allowedPayers.join(', ')}, topic ${MIRROR_CASSETTE_TRUST.topicId}`,
+  );
+  const mirrorFetch = mirrorCassetteFetch();
+  for (const [msg, hash, label] of [
+    [MIRROR_CASSETTE_OPERATOR_MESSAGE, MIRROR_CASSETTE_OPERATOR_DECISION_HASH, 'recorded'],
+    [MIRROR_CASSETTE_SECOND_OPERATOR_MESSAGE, MIRROR_CASSETTE_SECOND_OPERATOR_DECISION_HASH, 'recorded'],
+    [MIRROR_CASSETTE_SYNTHETIC_STRANGER_MESSAGE, MIRROR_CASSETTE_OPERATOR_DECISION_HASH, 'SYNTHETIC stranger copy'],
+  ] as const) {
+    const res = await verifyHcsAnchorOnMirror(
+      {
+        network: 'testnet',
+        topicId: msg.topic_id,
+        sequenceNumber: msg.sequence_number,
+        expectedDecisionHash: hash,
+      },
+      MIRROR_CASSETTE_TRUST,
+      mirrorFetch,
+    );
+    const anchored = typeof res.message?.decisionHash === 'string' ? res.message.decisionHash : 'n/a';
+    console.log(
+      `  [${res.match ? 'PASS' : 'FAIL'}] (${label}) seq ${msg.sequence_number} payer ${res.payerAccountId ?? 'n/a'}: ` +
+        (res.match ? 'match' : `refused (${res.refused ?? 'hash-mismatch'})`),
+    );
+    console.log(`         anchored decisionHash ${anchored === 'n/a' ? 'not read' : anchored.slice(0, 16) + '…'} expected ${hash.slice(0, 16)}…`);
+    if (res.error) console.log(`         - ${res.error}`);
+  }
+  console.log(
+    '(RED-mirror) A matching hash on a public topic is not proof: the message must be ' +
+      'paid for by an allowlisted operator on the receipt topic, both taken from server config.',
+  );
+
   console.log('\n=== Recorded-anchor evidence (historical exhibit; read-only) ===');
   console.log('Window 9 frozen HCS topic : 0.0.10569989  (DO NOT write from template paths)');
   console.log('Template live anchors     : set HEDERA_TEMPLATE_TOPIC_ID (separate topic; auto-create if empty)');
@@ -130,4 +218,7 @@ function main(): void {
   );
 }
 
-main();
+main().catch(err => {
+  console.error(err);
+  process.exitCode = 1;
+});
