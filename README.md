@@ -1,6 +1,6 @@
 # Provenance Swarm: a Scaffold-HBAR template
 
-<video src="docs/demo-video.mp4" controls muted width="100%"></video>
+https://github.com/livevnx8/scaffold-hbar-provenance-swarm/raw/main/docs/demo-video.mp4
 
 ![Demo: npm run demo. Two claims verify; tampered, fake-value, forged-oracle, and stranger-copy claims are refused.](docs/demo.gif)
 
