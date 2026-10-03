@@ -45,7 +45,7 @@ npm run build # builds the workspace packages; required once
 npm run demo  # ~30 seconds, fully offline
 ```
 
-You see **GREEN / GREEN / RED / RED-value**:
+You see **GREEN / GREEN / RED / RED-value / RED-mirror**:
 
 1. **GREEN**: a valid coffee-shipment claim verifies.
 2. **GREEN**: a second valid lot verifies.
@@ -55,6 +55,10 @@ You see **GREEN / GREEN / RED / RED-value**:
    refused by the value-attestation worker, which recomputes the implied USD value from a
    pinned Chainlink round (a recorded real testnet round, so the demo stays deterministic
    and offline) and fails the 0.5x-2x band.
+5. **RED-mirror**: two recorded testnet mirror responses replayed offline. The message paid
+   for by the operator matches; a message on the same public topic whose `decisionHash`
+   also matches, but which was paid for by a different account, is refused
+   (`payer-mismatch`).
 
 **3. Tamper a claim.** Supply-chain claims are easy to forge and hard to re-check. This
 template turns a product claim into a tamper-evident receipt: the same claim always yields
@@ -93,9 +97,11 @@ The swarm pattern separates independently testable verification responsibilities
   match the supplied fields) gets a full GREEN. The system proves internal consistency of
   the fields you supply, not signer identity, source authentication, document retrieval, or
   custody attestation from the outside world.
-- **Mirror confirmation is byte equality.** `verifyHcsAnchorOnMirror` checks that the HCS
-  payload's `decisionHash` equals the caller-provided expected hash. It does not
-  independently reconstruct the claim or recompute provenance.
+- **Mirror confirmation is byte equality from the operator.** `verifyHcsAnchorOnMirror`
+  checks that the HCS message sits on the operator topic, was paid for by the operator
+  account (both from server config: `HEDERA_TEMPLATE_TOPIC_ID`, `HEDERA_OPERATOR_ID`, never
+  from the request or receipt), and that its `decisionHash` equals the expected hash. It
+  does not independently reconstruct the claim or recompute provenance.
 - **Document hashes are shape-checked only.** The Document Hash Verifier accepts lowercase
   64-char hex strings. It never obtains or hashes document bytes, so it does not authenticate
   document contents.
@@ -407,7 +413,7 @@ verification record:
 | `POST /api/verify` | Runs the swarm over a claim; returns `{ receipt, report }` (fully offline) |
 | `POST /api/anchor` | Re-verifies claim+receipt, then anchors: HCS topic message, registry record, HTS certificate mint |
 | `POST /api/contract-verify` | Third-party check: hash-equality-only, or claim-reverified when a claim is posted |
-| `POST /api/mirror-verify` | Re-fetches the HCS topic message from the mirror node and compares decision hashes |
+| `POST /api/mirror-verify` | Re-fetches the HCS message from the operator topic and compares decision hashes; refuses messages not paid for by the operator account (needs `HEDERA_OPERATOR_ID` + `HEDERA_TEMPLATE_TOPIC_ID`, else 503) |
 | `GET /api/config` | Which Hedera features are configured (no secrets leak to the browser) |
 | `GET /api/fixture` | The valid coffee-shipment fixture claim |
 
@@ -458,7 +464,10 @@ npm run build --workspace @provenance-swarm/nextjs  # production build must comp
   supplied fields, not real-world truth (no signer identity, source auth, document retrieval,
   or external custody attestation).
 - Mirror confirmation (`verifyHcsAnchorOnMirror`) is byte equality of the HCS payload's
-  `decisionHash` with the caller-provided expected hash, not independent claim reconstruction.
+  `decisionHash` with the expected hash, gated on the message's `topic_id` and
+  `payer_account_id` matching the operator topic and operator account from server config.
+  Auto-created topics have a null submit key, so a hash match from any other payer is
+  refused (`refused: "payer-mismatch"`). It is not independent claim reconstruction.
 - `DocumentHashWorker` validates hash *shape* (lowercase 64-char hex) only; it never obtains
   or hashes document bytes.
 - `HEDERA_CERTIFICATE_TOKEN_ID` is required for NFT mint. Unlike the HCS topic (auto-created
