@@ -4,7 +4,7 @@ https://github.com/livevnx8/scaffold-hbar-provenance-swarm/raw/main/docs/demo-vi
 
 ![Demo: npm run demo. Two claims verify; tampered, fake-value, forged-oracle, and stranger-copy claims are refused.](docs/demo.gif)
 
-Check a supply-chain claim offline, then anchor a tamper-evident receipt on Hedera testnet.
+Check a supply-chain claim offline, then anchor a tamper-evident receipt on Hedera. Verified on testnet and mainnet.
 
 ## What this scaffold is
 
@@ -73,6 +73,7 @@ to anchor. Details: [docs/how-it-works.md](./docs/how-it-works.md).
 - [How it works](./docs/how-it-works.md): architecture, hashing, trust model, API routes, tests
 - [Going to testnet](./docs/going-to-testnet.md): environment, anchor auth, setup, error codes
 - [Testnet evidence](./docs/testnet-evidence.md): every transaction, superseded instances
+- [Mainnet evidence](./docs/mainnet-evidence.md): full verify → anchor → re-verify on Hedera mainnet (2026-10-03)
 - [Multi-ledger anchors](./docs/multi-ledger-anchors.md), [oracle design](./docs/phase-2-oracle-design.md),
   [history appendix](./docs/history/window-9/appendix.md), [AGENTS.md](./AGENTS.md)
 
