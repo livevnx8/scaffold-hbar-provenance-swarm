@@ -1,5 +1,7 @@
 # Provenance Swarm: a Scaffold-HBAR template
 
+![Demo: npm run demo. Two claims verify; tampered, fake-value, forged-oracle, and stranger-copy claims are refused.](docs/demo.gif)
+
 Check a supply-chain claim offline, then anchor a tamper-evident receipt on Hedera testnet.
 
 ## What this scaffold is
