@@ -14,5 +14,8 @@ export async function GET() {
     // Phase 2: the oracle path is configured (pinned testnet feeds, read-only
     // via Hashio). Live availability is proven per-request at attestation.
     oracle: true,
+    // Whether /api/anchor requires Authorization: Bearer <ANCHOR_API_TOKEN>.
+    // The token itself never leaves the server.
+    anchorTokenRequired: Boolean(process.env.ANCHOR_API_TOKEN?.trim()),
   });
 }
