@@ -1,6 +1,6 @@
 # Mainnet evidence
 
-Full system end-to-end on Hedera mainnet: verify a claim offline, anchor the receipt on a mainnet HCS topic, and re-verify the bytes from the mainnet mirror node. Back to the [README](../README.md).
+HCS anchoring run on Hedera mainnet: verify a claim offline, anchor the receipt on a mainnet HCS topic, and re-verify the bytes from the mainnet mirror node. Back to the [README](../README.md).
 
 ## E2E — 2026-10-03
 
@@ -41,7 +41,7 @@ Topic creation + one anchor message: ~0.102 HBAR total.
 
 ### Scope
 
-Full system pipeline on mainnet: offline verification, HCS anchoring, and independent mirror
+HCS anchoring pipeline on mainnet: offline verification, HCS anchoring, and independent mirror
 re-verification. The anchor target on this run was HCS; registry contract deployment and the
 certificate NFT on mainnet were deferred (the operator account held ~1 HBAR, below a mainnet
 contract deploy). The complete verify, anchor, re-verify loop is demonstrated live.
@@ -62,3 +62,18 @@ curl -s "https://mainnet.mirrornode.hedera.com/api/v1/topics/0.0.10903540/messag
 
 Base64-decode the `message` field and compare its `taskHash` and `decisionHash` against a
 fresh local run of the verifier on `claim-cof-042`.
+
+## Reproduce it locally
+
+```bash
+npm install && npm run build && npm run demo
+```
+
+Compare the `claim-cof-042` lines in the output: the `taskHash` and `decisionHash` must match
+the run facts above exactly. On the mirror link, check that the message was paid for by
+`0.0.10417333`.
+
+## Topic note
+
+The topic has no submit key, so anyone can post to it. Only message 1 (sequence number 1),
+paid for by `0.0.10417333`, is the evidence for this run.

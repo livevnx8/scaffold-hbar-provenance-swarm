@@ -4,7 +4,7 @@ https://github.com/livevnx8/scaffold-hbar-provenance-swarm/raw/main/docs/demo-vi
 
 ![Demo: npm run demo. Two claims verify; tampered, fake-value, forged-oracle, and stranger-copy claims are refused.](docs/demo.gif)
 
-Check a supply-chain claim offline, then anchor a tamper-evident receipt on Hedera. Verified on testnet and mainnet.
+Check a supply-chain claim offline, then anchor a tamper-evident receipt on Hedera. HCS anchoring verified on testnet and mainnet.
 
 ## What this scaffold is
 
