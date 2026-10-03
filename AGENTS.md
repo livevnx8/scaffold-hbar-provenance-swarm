@@ -17,6 +17,7 @@ anchored on Hedera. Forkable via `npm create scaffold-hbar@latest -- my-provenan
 
 ```bash
 npm install
+npm run build                      # required once: workspaces import each other's dist/
 npm run demo                       # offline swarm demo (no credentials)
 npm test                           # every workspace suite
 npm test --workspace @provenance-swarm/swarm
@@ -43,6 +44,10 @@ unbuilt tree fails with `MODULE_NOT_FOUND` on the workspace imports (see README
 - The double-verifier's two check groups (A: hash integrity, B: policy) must both pass;
   disagreement is reject-on-any-fail. The groups are not independent verifiers; both run
   inside the one `verifyProvenanceReceipt` call. Never claim multi-party independence.
+- `POST /api/anchor` spends operator HBAR and fails closed: disabled (503) unless
+  `ANCHOR_API_TOKEN` (16+ chars) is set, `ANCHOR_API_ENABLED=false` disables it entirely,
+  and callers send `Authorization: Bearer <token>`. Committed Chainlink rounds are re-read
+  on-chain (`oracleGate`) before any write; never trust client-supplied price data.
 - Frontend talks to Hedera through the Hashio JSON-RPC endpoints and mirror-node REST, matching the
   scaffold-hbar baseline configuration. No private keys in the browser; signing stays server-side.
 

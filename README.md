@@ -1,7 +1,8 @@
 # Provenance Swarm: a Scaffold-HBAR template
 
-> **Naming note:** "swarm" here means three deterministic checker workers, each checking one
-> part of a claim. A claim is verified only if all three pass. It is not the Swarm RWA
+> **Naming note:** "swarm" here means three separate deterministic checks (origin, custody,
+> documents), plus a fourth Chainlink value check for claims that declare a value. They do
+> not vote: a claim is verified only if every check passes. It is not the Swarm RWA
 > tokenization protocol.
 
 Verifiable supply-chain provenance on Hedera. A deterministic agent swarm checks a product's
@@ -47,7 +48,7 @@ npm run build # builds the workspace packages; required once
 npm run demo  # ~30 seconds, fully offline
 ```
 
-You see **GREEN / GREEN / RED / RED-value / RED-mirror**:
+You see **GREEN / GREEN / RED / RED-value / RED-oracle / RED-mirror**:
 
 1. **GREEN**: a valid coffee-shipment claim verifies.
 2. **GREEN**: a second valid lot verifies.
@@ -57,7 +58,12 @@ You see **GREEN / GREEN / RED / RED-value / RED-mirror**:
    refused by the value-attestation worker, which recomputes the implied USD value from a
    pinned Chainlink round (a recorded real testnet round, so the demo stays deterministic
    and offline) and fails the 0.5x-2x band.
-5. **RED-mirror**: two recorded testnet mirror responses replayed offline. The message paid
+5. **RED-oracle**: a claim whose committed Chainlink round was forged to make a 100x value
+   look consistent passes the offline re-run, then is refused because the round does not
+   match `getRoundData(roundId)` on the pinned Chainlink proxy (a recorded real response,
+   so the demo stays offline). The anchor route runs this re-read on the server before any
+   write.
+6. **RED-mirror**: two recorded testnet mirror responses replayed offline. The message paid
    for by the operator matches; a message on the same public topic whose `decisionHash`
    also matches, but which was paid for by a different account, is refused
    (`payer-mismatch`).
@@ -74,8 +80,10 @@ claim explain itself.
 testnet: the receipt goes out as an HCS topic message, the `decisionHash` is stored per
 claim in the `ProvenanceRegistry` smart contract (one anchor per claim; duplicates
 refused), and a provenance-certificate NFT (HTS) is minted for verified claims only.
-`needs_review` claims anchor the refusal but mint nothing. A forged "verified" receipt is
-refused at the server gate before any HCS, registry, or NFT write (HTTP 403).
+`needs_review` claims anchor the refusal but mint nothing. A forged "verified" receipt, or
+committed Chainlink evidence that does not match the chain, is refused at the server gate
+before any HCS, registry, or NFT write (HTTP 403). Anchoring spends the operator's HBAR, so
+the route is off until you set `ANCHOR_API_TOKEN` (see [Environment](#environment)).
 
 **5. Open HashScan.** The live testnet evidence is documented with links under
 [Going to testnet](#going-to-testnet): registry deployment, HCS anchors,
@@ -132,12 +140,11 @@ Everything here builds on the core pattern; none of it is required to judge it.
 
 ## How the infrastructure fits together
 
-Five layers, each independently checkable. Layers 1-3 are the core pattern from the
-90-second path; layers 4-5 are advanced extensions. A judge can start at any layer and
-verify it without trusting the others.
+Five layers, each checkable on its own. Layers 1-3 are the core pattern from the
+90-second path; layers 4-5 are advanced extensions.
 
-**1. The swarm (offline, deterministic).** Three worker agents check one claim
-each: origin attestation (do the hashes recompute from the supplied fields?),
+**1. The swarm (offline, deterministic).** Three separate checks each look at one
+part of the claim: origin attestation (do the hashes recompute from the supplied fields?),
 custody chain (is every handoff intact?), document hashes (are they well-formed
 64-char hex?). The coordinator binds the three verdicts into a receipt.
 `taskHash = sha256(canonical claim)` identifies the claim;
@@ -175,7 +182,7 @@ attestation, 13 for value claims. If anything drifts, it fails loudly.
 ```bash
 npm install          # ~9 minutes on a clean machine; Node >= 20.18.3
 npm run build        # builds swarm, anchors, oracle, then nextjs; required before `dev`
-npm run demo         # GREEN / GREEN / RED / RED-value / RED-mirror, offline
+npm run demo         # GREEN / GREEN / RED / RED-value / RED-oracle / RED-mirror, offline
 npm test             # workspace unit tests, all offline
 ```
 
@@ -221,7 +228,7 @@ flowchart TB
     dv --> hcs[HCS topic anchor<br/>receipt hash + timestamp]
     dv --> sc[ProvenanceRegistry contract<br/>anchorReceipt / verifyReceipt]
     dv --> nft[HTS certificate NFT<br/>verified claims only]
-    hcs --> mirror[Mirror Node<br/>independent re-verification]
+    hcs --> mirror[Mirror Node<br/>operator-pinned re-verification]
     sc --> ui2[Check-a-receipt tab]
 ```
 
@@ -271,13 +278,22 @@ Every step is deterministic: no models, no randomness, no network calls in the v
    verifiers; both run inside the one `verifyProvenanceReceipt` call, and disagreement
    is reject-on-any-fail. A tampered claim is *truthfully
    recorded* as `needs_review`. The receipt never lies about what it saw.
-5. **Anchor gate**: `POST /api/anchor` requires the original claim and re-runs
-   `verifyProvenanceReceipt` (and a fresh `verifyClaim`) **before** any HCS, registry, or
-   NFT write. Forged "verified" receipts are rejected with HTTP 403. Receipts that fail
-   verification are never minted an NFT; `needs_review` receipts may still be anchored with
-   their verdict truthfully recorded. The route additionally requires
-   `HEDERA_REGISTRY_ADDRESS`: without the registry, one-anchor-per-claim is unenforceable,
-   so the route fails closed (HTTP 400) before any write.
+5. **Anchor gate**: `POST /api/anchor`, in order, **before** any HCS, registry, or NFT write:
+   - requires `Authorization: Bearer <ANCHOR_API_TOKEN>` (constant-time compare). The route
+     is disabled (HTTP 503) while `ANCHOR_API_TOKEN` is unset or shorter than 16
+     characters, or when `ANCHOR_API_ENABLED=false`; a wrong or missing token gets 401;
+   - requires the original claim and re-runs `verifyProvenanceReceipt` (and a fresh
+     `verifyClaim`). Forged "verified" receipts are rejected with HTTP 403;
+   - for claims with Chainlink evidence, re-reads every committed round on the server with
+     `getRoundData(roundId)` on the pinned proxy and rejects any field mismatch, unknown
+     feed, or round older than 24 hours (403; 502 if the feed cannot be read). The price
+     data in the posted claim is never trusted on its own;
+   - requires `HEDERA_REGISTRY_ADDRESS` (without the registry, one-anchor-per-claim is
+     unenforceable, so the route fails closed with 400) and reads `getAnchor(claimId)` so a
+     duplicate gets 409 before an HCS message is paid for.
+
+   Receipts that fail verification are never minted an NFT; `needs_review` receipts may
+   still be anchored with their verdict truthfully recorded.
 
 ## Check-a-receipt honesty
 
@@ -323,6 +339,8 @@ Copy `packages/nextjs/.env.example` to `packages/nextjs/.env`:
 | `HEDERA_CERTIFICATE_TOKEN_ID` | NFT mint | **must be set**: create once with `npm run init:token` (writes this var), or out-of-band / via `packages/swarm/scripts/mint-genesis-certificate.ts`; **not** auto-created by `/api/anchor`. If unset, `mintCertificate` fails with "No certificate token configured" and the NFT step reports that error |
 | `HEDERA_REGISTRY_ADDRESS` | contract anchor + receipt checks | from `deploy:testnet` |
 | `HEDERA_RPC_URL` | contract calls | defaults to Hashio testnet |
+| `ANCHOR_API_TOKEN` | `POST /api/anchor` | **Required to anchor.** 16+ characters (e.g. `openssl rand -hex 24`). Unset or short → the route answers 503 and writes nothing. Callers send `Authorization: Bearer <token>`; the UI asks for it. Never exposed by `/api/config` |
+| `ANCHOR_API_ENABLED` | public deployments | `false` disables `/api/anchor` entirely (503) even with a token, for verify-only deployments. `true` never bypasses a missing token |
 
 ## Going to testnet
 
@@ -337,11 +355,16 @@ the SDK defaults to ED25519.
 **If anchoring fails**, the API returns a plain reason. Incomplete provenance
 chains are not accepted as finalized receipts:
 
+- **503**: anchoring disabled (`ANCHOR_API_TOKEN` unset or too short, or
+  `ANCHOR_API_ENABLED=false`). **401**: missing or wrong `Authorization: Bearer` token.
+- **403**: forged receipt, or committed Chainlink evidence that does not match
+  `getRoundData` on the pinned feed (or is older than 24 hours; re-run verification).
 - **400**: bad request, unusable key, or exhibit topic pointed at live path
   (`Live topic is set to the frozen Window 9 exhibit topic`,
   `HEDERA_OPERATOR_KEY is not a usable private key for the registry path`).
 - **500**: server misconfig (`Hedera operator not configured`).
-- **409**: duplicate registry anchor (`This claim is already anchored on-chain`).
+- **409**: duplicate registry anchor (`This claim is already anchored on-chain`), detected
+  with a registry read before any write.
 - **502**: partial or all-failed HCS / registry / NFT stages (`{ ok: false }` plus
   per-stage results). A skipped NFT stage (verdict-not-verified) is not a failure.
   There is no `no-registry` skip anymore: anchoring without `HEDERA_REGISTRY_ADDRESS`
@@ -353,7 +376,9 @@ chains are not accepted as finalized receipts:
 - Registry path is **ECDSA-only**; set `HEDERA_KEY_TYPE=ecdsa` for HashPack-style keys.
 
 1. Create a testnet account via the [Hedera Portal](https://portal.hedera.com) and fund it from the faucet.
-2. Copy `packages/nextjs/.env.example` to `packages/nextjs/.env` and add your operator credentials.
+2. Copy `packages/nextjs/.env.example` to `packages/nextjs/.env`, add your operator
+   credentials, and set `ANCHOR_API_TOKEN` (16+ characters; you paste it into the anchor
+   panel). Without it the anchor route stays disabled.
 3. Create the HTS certificate NFT collection and write `HEDERA_CERTIFICATE_TOKEN_ID`:
    `HEDERA_OPERATOR_ID=… HEDERA_OPERATOR_KEY=… npm run init:token -- --env packages/nextjs/.env`
    (`--dry-run` prints the collection plan without submitting or writing). This is the last
@@ -369,7 +394,9 @@ Historical exhibit transactions (read-only tape on topic `0.0.10569989`) are doc
 the appendix ([`docs/history/window-9/appendix.md`](./docs/history/window-9/appendix.md)); the genesis-NFT
 live run notes are at [`genesis-nft/LIVE_RUN.md`](./genesis-nft/LIVE_RUN.md).
 
-**Live template path** (2026-09-21 E2E; operator `0.0.9034044`; topic ≠ exhibit; evidence:
+**2026-09-21 E2E, superseded instance** (its registry `0xC923…`, topic `0.0.10649257` and
+PROVC token `0.0.10649238` are no longer the live instance; kept as historical evidence;
+operator `0.0.9034044`; topic ≠ exhibit; evidence:
 [`docs/e2e/E2E-TESTNET-2026-09-21.md`](./docs/e2e/E2E-TESTNET-2026-09-21.md)):
 
 | Step | Transaction | HashScan link |
@@ -383,13 +410,14 @@ live run notes are at [`genesis-nft/LIVE_RUN.md`](./genesis-nft/LIVE_RUN.md).
 | Mirror re-verify | decisionHash match on seq 3 | [mirror message](https://testnet.mirrornode.hedera.com/api/v1/topics/0.0.10649257/messages/3) |
 | Forged `/api/anchor` | tampered decisionHash → HTTP **403** | refused (no write) |
 
-**Latest runs** (2026-09-23; two operator rigs; full evidence:
+**2026-09-23 runs** (two operator rigs, run against the pre-hardening registry
+`0x5Ad5…`, since superseded by the redeploy below; full evidence:
 [`docs/e2e/E2E-TESTNET-2026-09-23.md`](./docs/e2e/E2E-TESTNET-2026-09-23.md)):
 
 | Run | Anchors | Result |
 |---|---|---|
-| Vera's rig (`0.0.10685865`) | HCS seq 3–6, topic `0.0.10681528` | 4/4 `verifyReceipt` true; duplicate anchor refused (409); mint not-run (`INVALID_SIGNATURE`: operator lacks supply key; not faked) |
-| Devin's rig (`0.0.9034044`) | HCS seq 7–10, topic `0.0.10681528` | 4/4 `verifyReceipt` true; NFT serials **4** and **5** minted for the two verified claims; red claims minted nothing |
+| Second operator (`0.0.10685865`) | HCS seq 3–6, topic `0.0.10681528` | 4/4 `verifyReceipt` true; duplicate anchor refused (409); mint not-run (`INVALID_SIGNATURE`: operator lacks supply key; not faked) |
+| Template operator (`0.0.9034044`) | HCS seq 7–10, topic `0.0.10681528` | 4/4 `verifyReceipt` true; NFT serials **4** and **5** minted for the two verified claims; red claims minted nothing |
 | XRPL devnet | 8/8 attestations (both rigs) | strict `tesSUCCESS`, memo byte-match |
 | Solana devnet | 4/4 attestations (operator packet + explorer) | memo byte-match |
 | Universal checker | 100/100 checks | HCS seq 7-10 and XRPL 4/4 independently re-read from a third machine; Solana via operator packet + explorer |
@@ -406,6 +434,49 @@ The prior address `0x5Ad54d39d860Cb2c2c6A27c787eead7358137e1a` is retained only 
 the superseded pre-hardening instance (historical artifact). Procedure and
 verification record:
 [`docs/e2e/REGISTRY-REDEPLOY.md`](./docs/e2e/REGISTRY-REDEPLOY.md).
+
+## Testnet transactions
+
+[PLACEHOLDER: pick the link(s) to submit. Every link below already appears elsewhere in this
+repo (README tables, `docs/e2e/`, `docs/history/`); none was added for this section.]
+
+**Current live instance** (operator-hardened redeploy, 2026-09-24;
+[`docs/e2e/REGISTRY-REDEPLOY.md`](./docs/e2e/REGISTRY-REDEPLOY.md)):
+
+- Registry deploy (Smart Contract Service):
+  [`0xdc4b903e…9eec5d`](https://hashscan.io/testnet/transaction/0xdc4b903ea7385bede39dc433023ebb0dfb44d50dfcf10c2404b3250b5e9eec5d),
+  contract [`0xd564579399aAc654CcB5C5F768679471aa795f55`](https://hashscan.io/testnet/contract/0xd564579399aAc654CcB5C5F768679471aa795f55)
+- HCS topic: [`0.0.10681528`](https://hashscan.io/testnet/topic/0.0.10681528)
+- HTS certificate collection (PROVC): [`0.0.10653074`](https://hashscan.io/testnet/token/0.0.10653074)
+
+**2026-09-23 run, template operator `0.0.9034044`** (topic `0.0.10681528`; registry calls went
+to the since-superseded `0x5Ad5…`;
+[`docs/e2e/E2E-TESTNET-2026-09-23.md`](./docs/e2e/E2E-TESTNET-2026-09-23.md)):
+
+- HCS anchor, seq 7 (verified):
+  [`0.0.9034044@1790201046.181965496`](https://hashscan.io/testnet/transaction/0.0.9034044@1790201046.181965496)
+- Registry `anchorReceipt`, seq 7 claim:
+  [`0x07daf909…febc415a`](https://hashscan.io/testnet/transaction/0x07daf9091a827bd1f620b4925354e093073c4c1408cfd59635460351febc415a)
+- HTS NFT mint, serial 4:
+  [`0.0.9034044@1790201052.128733096`](https://hashscan.io/testnet/transaction/0.0.9034044@1790201052.128733096)
+- HCS anchor, seq 8 (verified value claim):
+  [`0.0.9034044@1790201053.821201862`](https://hashscan.io/testnet/transaction/0.0.9034044@1790201053.821201862);
+  NFT mint, serial 5:
+  [`0.0.9034044@1790201065.958253903`](https://hashscan.io/testnet/transaction/0.0.9034044@1790201065.958253903)
+- HCS anchors, seq 9 and 10 (`needs_review`, no mint):
+  [`0.0.9034044@1790201064.269125956`](https://hashscan.io/testnet/transaction/0.0.9034044@1790201064.269125956),
+  [`0.0.9034044@1790201073.985532696`](https://hashscan.io/testnet/transaction/0.0.9034044@1790201073.985532696)
+
+**2026-09-23 run, second operator `0.0.10685865`**: registry `anchorReceipt`
+[`0x4bf78ca7…dbe9273be`](https://hashscan.io/testnet/transaction/0x4bf78ca72bdfd07811828b95845ed447ec129cae396db0e320740bfdbe9273be)
+(superseded registry). [HOLD: whether `0.0.10685865` belongs in the operator allowlist is
+undecided; see [Check it yourself](#check-it-yourself-without-our-server).]
+
+**2026-09-21 run (superseded instance)**: see the table in
+[Going to testnet](#going-to-testnet).
+
+**Historical exhibit** (frozen topic `0.0.10569989`, read-only):
+[appendix](./docs/history/window-9/appendix.md).
 
 ## Check it yourself without our server
 
@@ -429,7 +500,8 @@ matching hash from any other payer means nothing.
 | Route | Purpose |
 |---|---|
 | `POST /api/verify` | Runs the swarm over a claim; returns `{ receipt, report }` (fully offline) |
-| `POST /api/anchor` | Re-verifies claim+receipt, then anchors: HCS topic message, registry record, HTS certificate mint |
+| `POST /api/anchor` | Requires `Authorization: Bearer <ANCHOR_API_TOKEN>` (disabled with 503 when unset or `ANCHOR_API_ENABLED=false`). Re-verifies claim+receipt, re-reads committed Chainlink rounds on-chain, checks the registry for a duplicate, then anchors: HCS topic message, registry record, HTS certificate mint |
+| `POST /api/oracle-verify` | Read-only audit: re-reads every Chainlink round committed in a claim with `getRoundData` and reports field-level matches |
 | `POST /api/contract-verify` | Third-party check: hash-equality-only, or claim-reverified when a claim is posted |
 | `POST /api/mirror-verify` | Re-fetches the HCS message from the operator topic and compares decision hashes; refuses messages not paid for by the operator account (needs `HEDERA_OPERATOR_ID` + `HEDERA_TEMPLATE_TOPIC_ID`, else 503) |
 | `GET /api/config` | Which Hedera features are configured (no secrets leak to the browser) |
@@ -481,6 +553,12 @@ npm run build --workspace @provenance-swarm/nextjs  # production build must comp
   via `ensureTopic` when absent), `/api/anchor` does not call `createCertificateToken()`.
   Create the collection once with `npm run init:token` (writes the id into `.env`), or set
   it out-of-band. Unset token → mint fails with "No certificate token configured".
+- `/api/anchor` spends the operator's HBAR. It is disabled unless `ANCHOR_API_TOKEN` is set,
+  and the token is a single shared secret, not per-user auth or rate limiting. Use
+  `ANCHOR_API_ENABLED=false` on public deployments that should only verify.
+- The registry records what the operator anchored and when. Re-checking removes the need to
+  trust the swarm's computation (anyone can recompute the hashes from the claim), not the
+  need to trust the operator who chose to anchor it.
 - Auto-created HCS topics have a **null submit key**: anyone who knows the topic id can
   append messages. That is intentional for a public receipt tape in this template, not a
   private channel. Set your own submit key out-of-band if you need append restriction.
