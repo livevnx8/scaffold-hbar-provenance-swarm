@@ -1,15 +1,17 @@
 # Provenance Swarm: a Scaffold-HBAR template
 
-> **Naming note:** "swarm" here means a multi-agent verification swarm (independent
-> checker agents that vote on a claim). It is not the Swarm RWA tokenization protocol.
+> **Naming note:** "swarm" here means three deterministic checker workers, each checking one
+> part of a claim. A claim is verified only if all three pass. It is not the Swarm RWA
+> tokenization protocol.
 
 Verifiable supply-chain provenance on Hedera. A deterministic agent swarm checks a product's
 origin attestation, custody chain, and document hashes; the coordinator binds the verdicts
 into a tamper-evident receipt; the receipt can be anchored on Hedera (HCS topic + registry
 contract) and a provenance-certificate NFT (HTS) is minted for verified claims. A Next.js
-frontend walks anyone through claim to verification to receipt to anchoring, and a third
-party can re-check a receipt against the chain or the mirror node without trusting the
-verifier.
+frontend walks anyone through claim to verification to receipt to anchoring. A third party
+can re-check an anchored receipt against the registry contract or the public mirror node,
+using the operator account and topic published in
+[Check it yourself](#check-it-yourself-without-our-server).
 
 ## The 90-second path (start here)
 
@@ -77,15 +79,15 @@ refused at the server gate before any HCS, registry, or NFT write (HTTP 403).
 
 **5. Open HashScan.** The live testnet evidence is documented with links under
 [Going to testnet](#going-to-testnet): registry deployment, HCS anchors,
-`anchorReceipt` calls, NFT mints, and mirror re-verification, from two independent
-operators on 2026-09-23.
+`anchorReceipt` calls, NFT mints, and mirror re-verification, from two operator rigs on
+2026-09-23 (one rig used the same operator account as the 2026-09-21 run).
 
-**6. Check the receipt from an independent path.** Anyone with the claim ID can replay the
-check without trusting the app: re-fetch the HCS message from the public mirror node and
-byte-compare the `decisionHash` (`/api/mirror-verify`), call `verifyReceipt` on the
-registry contract on-chain (`/api/contract-verify`), or use the app's **Check a receipt**
-tab. That is the whole core pattern: deterministic receipt, Hedera anchor, independent
-re-check.
+**6. Re-check the receipt.** [HOLD: final wording waits for the anchor-route fix and the
+clean-clone rerun.] Use the app's **Check a receipt** tab (`/api/contract-verify`,
+`/api/mirror-verify`), or skip our server entirely and query the public mirror node yourself
+(see [Check it yourself](#check-it-yourself-without-our-server)). A mirror match counts only
+if the message is on the published topic and was paid for by the published operator account.
+That is the whole core pattern: deterministic receipt, Hedera anchor, re-check.
 
 ## Why it matters
 
@@ -151,10 +153,11 @@ ways on Hedera testnet: the receipt goes out as an HCS topic message, the
 provenance-certificate NFT (HTS) is minted for verified claims only.
 `needs_review` claims anchor the refusal but mint nothing.
 
-**3. Mirror re-verification (trust, but re-read).** The frontend re-fetches the
-HCS message from the public mirror node and byte-compares the `decisionHash`.
-Anyone with the claim ID can replay this check from any machine. The chain
-is the source of truth, not the app.
+**3. Mirror re-verification (trust, but re-read).** The server re-fetches the
+HCS message from the public mirror node, checks that it is on the operator topic and was
+paid for by the operator account, and byte-compares the `decisionHash`. Anyone can run the
+same query against the public mirror node without our server, using the published operator
+account and topic.
 
 **4. Cross-chain attestations (extension: the receipt travels).** The same proof envelope
 (claim ID, verdict, decision hash, task hash, HCS sequence, consensus
@@ -172,18 +175,16 @@ attestation, 13 for value claims. If anything drifts, it fails loudly.
 ```bash
 npm install          # ~9 minutes on a clean machine; Node >= 20.18.3
 npm run build        # builds swarm, anchors, oracle, then nextjs; required before `dev`
-npm run demo         # GREEN / GREEN / RED / RED-value offline teach-in
+npm run demo         # GREEN / GREEN / RED / RED-value / RED-mirror, offline
 npm test             # workspace unit tests, all offline
 ```
 
 Build ordering matters: `nextjs` and `oracle` import the swarm package's compiled
 `dist/`, and the oracle tests import both compiled packages. Root `npm test`
 builds swarm + anchors + oracle first via `build:test-deps`, so a clean
-checkout works with a single `npm test`. (An earlier `pretest` hook did not
-reliably fire under `npm run test --workspaces`, so the build step is now
-explicit in the `test` script.) Running `npm test --workspace` on a clean
-checkout without a prior build still fails with `MODULE_NOT_FOUND` on the
-workspace imports; run root `npm test` or build the three packages first.
+checkout works with a single `npm test`. Per-workspace tests
+(`npm test --workspace ...`) need `npm run build` first, or they fail with
+`MODULE_NOT_FOUND`.
 
 Run the frontend:
 
@@ -382,7 +383,7 @@ live run notes are at [`genesis-nft/LIVE_RUN.md`](./genesis-nft/LIVE_RUN.md).
 | Mirror re-verify | decisionHash match on seq 3 | [mirror message](https://testnet.mirrornode.hedera.com/api/v1/topics/0.0.10649257/messages/3) |
 | Forged `/api/anchor` | tampered decisionHash → HTTP **403** | refused (no write) |
 
-**Latest runs** (2026-09-23; two independent operators; full evidence:
+**Latest runs** (2026-09-23; two operator rigs; full evidence:
 [`docs/e2e/E2E-TESTNET-2026-09-23.md`](./docs/e2e/E2E-TESTNET-2026-09-23.md)):
 
 | Run | Anchors | Result |
@@ -401,10 +402,27 @@ token [`0.0.10653074`](https://hashscan.io/testnet/token/0.0.10653074).
 Note: the live testnet instance above is the operator-hardened redeploy,
 deployed 2026-09-24 from main @ `9c1d70b`. Deploy transaction:
 [`0xdc4b903ea7385bede39dc433023ebb0dfb44d50dfcf10c2404b3250b5e9eec5d`](https://hashscan.io/testnet/transaction/0xdc4b903ea7385bede39dc433023ebb0dfb44d50dfcf10c2404b3250b5e9eec5d).
-The prior name `0x5Ad54d39d860Cb2c2c6A27c787eead7358137e1a` is retained only as
+The prior address `0x5Ad54d39d860Cb2c2c6A27c787eead7358137e1a` is retained only as
 the superseded pre-hardening instance (historical artifact). Procedure and
 verification record:
 [`docs/e2e/REGISTRY-REDEPLOY.md`](./docs/e2e/REGISTRY-REDEPLOY.md).
+
+## Check it yourself without our server
+
+[HOLD: confirm the operator list and topic with the deployer before publishing.]
+
+- Topic: `0.0.10681528`
+- Operator account(s) allowed to anchor: `[TBD]`
+
+Fetch a message from the public mirror node:
+
+```bash
+curl -s https://testnet.mirrornode.hedera.com/api/v1/topics/0.0.10681528/messages/<seq>
+```
+
+Accept it only if `payer_account_id` is one of the operator accounts above. Then base64-decode
+`message` and compare its `decisionHash` with the receipt. The topic has no submit key, so a
+matching hash from any other payer means nothing.
 
 ## API routes (frontend backend)
 
@@ -420,6 +438,7 @@ verification record:
 ## Testing
 
 ```bash
+npm run build                                      # required once before per-workspace tests
 npm test --workspace @provenance-swarm/swarm       # workers, coordinator, receipts,
                                                    # double-verifier, mirror helper (stubbed fetch)
 npm test --workspace @provenance-swarm/hardhat   # anchor/lookup/verify, one-anchor rule
@@ -440,10 +459,6 @@ npm run build --workspace @provenance-swarm/nextjs  # production build must comp
   farm) interpolated into findings or `farm|region|...` preimages can reproduce framing
   (adversarial findings F2/F3, 2026-09-21). Kept readable so existing anchors stay checkable;
   new receipts are always 1.1.
-- The `/api/anchor` route requires `HEDERA_REGISTRY_ADDRESS` and fails closed without it:
-  one-anchor-per-claim is enforced by the registry contract alone, so anchoring or minting
-  without a registry would allow repeat anchors and repeat mints of the same claim
-  (adversarial finding F6, 2026-09-21).
 
 ## Honest boundaries
 
@@ -460,16 +475,8 @@ npm run build --workspace @provenance-swarm/nextjs  # production build must comp
   cryptography.
 - Topic `0.0.10569989` is the frozen Window 9 exhibit. Template live anchors use
   `HEDERA_TEMPLATE_TOPIC_ID`.
-- Self-consistent fabricated claims get full GREEN: workers prove hash recomputes match the
-  supplied fields, not real-world truth (no signer identity, source auth, document retrieval,
-  or external custody attestation).
-- Mirror confirmation (`verifyHcsAnchorOnMirror`) is byte equality of the HCS payload's
-  `decisionHash` with the expected hash, gated on the message's `topic_id` and
-  `payer_account_id` matching the operator topic and operator account from server config.
-  Auto-created topics have a null submit key, so a hash match from any other payer is
-  refused (`refused: "payer-mismatch"`). It is not independent claim reconstruction.
-- `DocumentHashWorker` validates hash *shape* (lowercase 64-char hex) only; it never obtains
-  or hashes document bytes.
+- Fabricated but self-consistent claims, mirror confirmation, and document hashes: see
+  [What this does not prove](#what-this-does-not-prove).
 - `HEDERA_CERTIFICATE_TOKEN_ID` is required for NFT mint. Unlike the HCS topic (auto-created
   via `ensureTopic` when absent), `/api/anchor` does not call `createCertificateToken()`.
   Create the collection once with `npm run init:token` (writes the id into `.env`), or set

@@ -29,6 +29,10 @@
         {
           "steps": [
             {
+              "command": "npm run build",
+              "label": "Build the workspace packages (required once, before demo or dev)"
+            },
+            {
               "command": "npm run demo",
               "label": "Run the offline demo"
             },
