@@ -100,3 +100,20 @@ export const CHAINLINK_CASSETTE_READING: FeedReading = {
   answeredInRound: '18446744073709595481',
   mode: 'cassette',
 };
+
+/**
+ * Recorded getRoundData(18446744073709595481) response from the HBAR/USD
+ * proxy, read on 2026-10-02 via testnet.hashio.io (read-only eth_call). It
+ * equals the cassette round field for field, which is what lets the offline
+ * demo and tests exercise the anchor-time on-chain re-check deterministically.
+ */
+export const CHAINLINK_RECORDED_GET_ROUND: FeedReading = {
+  pair: 'HBAR/USD',
+  feedAddress: '0x59bC155EB6c6C415fE43255aF66EcF0523c92B4a',
+  roundId: '18446744073709595481',
+  answer: '9308267',
+  updatedAt: 1790031828,
+  decimals: 8,
+  answeredInRound: '18446744073709595481',
+  mode: 'live',
+};

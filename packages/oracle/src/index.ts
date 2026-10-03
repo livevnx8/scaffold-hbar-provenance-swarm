@@ -12,6 +12,7 @@ export {
   VALUE_BAND_HIGH_NUM,
   VALUE_BAND_HIGH_DEN,
   feedForCurrency,
+  CHAINLINK_RECORDED_GET_ROUND,
 } from './feeds.js';
 export type { FeedSpec } from './feeds.js';
 export { HashioPriceFeed, HASHIO_TESTNET_RPC } from './reader.js';
@@ -37,4 +38,15 @@ export { ValueAttestationWorker } from './worker.js';
 export { attestClaimValue, AttestationError } from './attestation.js';
 export type { AttestationErrorKind } from './attestation.js';
 export { OracleProvenanceClient, createClient } from './client.js';
-export { fixtureOracleEvidence, fixtureValueClaimWithEvidence } from './fixture.js';
+export {
+  fixtureOracleEvidence,
+  fixtureValueClaimWithEvidence,
+  fixtureForgedValueClaim,
+} from './fixture.js';
+export { recheckOracleEvidenceOnChain, RecordedPriceFeed } from './recheck.js';
+export type {
+  OracleRecheckResult,
+  OracleRecheckFailure,
+  ReadingRecheck,
+  FeedPortFactory,
+} from './recheck.js';

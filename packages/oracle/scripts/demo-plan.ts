@@ -7,7 +7,10 @@
  *   3. Tampered attestation              -> needs_review (RED) with per-worker refusal
  *   4. 100x declared value vs evidence   -> needs_review (RED-value) via the
  *      value-attestation worker on the pinned cassette round
- *   5. Mirror re-check, foreign payer    -> refused (RED-mirror): a recorded
+ *   5. Forged Chainlink round            -> sync worker says verified, the
+ *      anchor-time getRoundData re-check (recorded response) refuses it
+ *      (RED-oracle), so /api/anchor returns 403 before any write
+ *   6. Mirror re-check, foreign payer    -> refused (RED-mirror): a recorded
  *      mirror response whose decisionHash matches but whose payer_account_id
  *      is not the operator is refused; the operator-paid message matches
  *
@@ -39,7 +42,15 @@ import type {
   ProvenanceReceipt,
   DoubleVerifierReport,
 } from '@provenance-swarm/swarm';
-import { createClient, fixtureOracleEvidence } from '../src/index.js';
+import {
+  createClient,
+  fixtureOracleEvidence,
+  fixtureValueClaimWithEvidence,
+  fixtureForgedValueClaim,
+  recheckOracleEvidenceOnChain,
+  RecordedPriceFeed,
+  CHAINLINK_RECORDED_GET_ROUND,
+} from '../src/index.js';
 
 function printReceipt(
   label: string,
@@ -72,6 +83,7 @@ async function main(): Promise<void> {
   console.log(
     'Demo plan: GREEN (fixture) -> GREEN (second lot) -> RED (tampered attestation) ' +
       '-> RED-value (100x declared value, cassette evidence) ' +
+      '-> RED-oracle (forged round, recorded getRoundData) ' +
       '-> RED-mirror (foreign payer on the operator topic, recorded mirror responses)',
   );
 
@@ -123,6 +135,31 @@ async function main(): Promise<void> {
     '(RED-value) The receipt is authentic (v1.1, cassette evidence bound into ' +
       'taskHash); it truthfully records needs_review. The value worker is ' +
       'load-bearing: a 100x declared value cannot silently become verified.',
+  );
+
+  // RED-oracle — a caller posting straight to /api/anchor can commit a forged
+  // "live" round whose answer is inflated to match an inflated declared value.
+  // The sync worker cannot tell (the evidence is self-consistent); the anchor
+  // gate re-reads getRoundData(roundId) and refuses. A recorded getRoundData
+  // response stands in for the chain so the demo stays offline.
+  console.log('\n=== RED-oracle: Forged Chainlink round vs on-chain getRoundData (recorded response) ===');
+  const recordedFeed = () => new RecordedPriceFeed([CHAINLINK_RECORDED_GET_ROUND]);
+  for (const [label, c] of [
+    ['honest cassette evidence', fixtureValueClaimWithEvidence()],
+    ['forged round (100x answer, relabelled live)', fixtureForgedValueClaim()],
+  ] as const) {
+    const sync = client.verifyClaim(c).receipt;
+    const recheck = await recheckOracleEvidenceOnChain(c, recordedFeed);
+    console.log(`  ${label}: sync worker verdict=${sync.verdict}, decisionHash ${sync.decisionHash.slice(0, 16)}…`);
+    console.log(
+      `  [${recheck.ok ? 'PASS' : 'FAIL'}] getRoundData(${recheck.checks[0]?.roundId}) re-check: ` +
+        (recheck.ok ? 'matches the chain' : `refused (${recheck.failure}) -> /api/anchor 403, nothing written`),
+    );
+    for (const m of recheck.checks.flatMap((x) => x.mismatches)) console.log(`         - ${m}`);
+  }
+  console.log(
+    '(RED-oracle) Self-consistent evidence is not enough: every committed round must match ' +
+      'getRoundData on the pinned Chainlink proxy before anything is anchored.',
   );
 
   // RED-mirror — the anchor topic has a null submit key, so anyone can post a

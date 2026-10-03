@@ -9,6 +9,7 @@ import {
 import { gateReceipt } from '@/lib/anchorGate';
 import { registryGuard } from '@/lib/registryGuard';
 import { mintSkipReason } from '@/lib/mintGate';
+import { oracleGate } from '@/lib/oracleGate';
 import type {
   ProvenanceReceipt,
   ProvenanceClaim,
@@ -140,6 +141,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: guard.error, ...out }, { status: 400 });
   }
   const registryAddress = guard.address;
+
+  // Committed Chainlink evidence is re-read on-chain before any write: the
+  // forge gate above only proves the evidence is internally consistent.
+  const oracle = await oracleGate(claim!);
+  if (!oracle.ok) {
+    return NextResponse.json(
+      { ok: false, error: oracle.error, oracle: oracle.recheck, ...out },
+      { status: oracle.status },
+    );
+  }
 
   // 1 — HCS anchor
   try {
